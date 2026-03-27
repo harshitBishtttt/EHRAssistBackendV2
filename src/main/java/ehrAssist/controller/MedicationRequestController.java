@@ -33,8 +33,9 @@ public class MedicationRequestController {
             @RequestParam(required = false) UUID _id,
             @RequestParam(required = false) UUID patient,
             @RequestParam(required = false) String status,
+            @RequestParam(name = "formulary-drug-cd", required = false) String formularyDrugCd,
             @PageableDefault(page = 0, size = 10) Pageable pageable) {
-        Bundle bundle = medicationRequestService.search(_id, patient, status, pageable);
+        Bundle bundle = medicationRequestService.search(_id, patient, status, formularyDrugCd, pageable);
         return fhirResponseHelper.toResponse(bundle);
     }
 

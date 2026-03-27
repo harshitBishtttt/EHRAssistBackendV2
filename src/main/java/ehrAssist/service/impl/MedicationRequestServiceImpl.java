@@ -47,8 +47,8 @@ public class MedicationRequestServiceImpl implements MedicationRequestService {
 
     @Override
     @Transactional(readOnly = true)
-    public Bundle search(UUID id, UUID patientId, String status, Pageable pageable) {
-        if (id == null && patientId == null && status == null) {
+    public Bundle search(UUID id, UUID patientId, String status, String formularyDrugCd, Pageable pageable) {
+        if (id == null && patientId == null && status == null && formularyDrugCd == null) {
             return bundleBuilder.searchSetWithPagination("MedicationRequest", List.of(), 0L, 0, pageable.getPageSize(), "");
         }
 
@@ -63,6 +63,10 @@ public class MedicationRequestServiceImpl implements MedicationRequestService {
         if (status != null) {
             spec = spec.and((root, query, cb) -> cb.equal(root.get("status"), status));
         }
+        if (formularyDrugCd != null) {
+            spec = spec.and((root, query, cb) ->
+                    cb.equal(root.join("medicationCode").get("formularyDrugCd"), formularyDrugCd));
+        }
 
         Page<MedicationRequestEntity> pageResult = medicationRequestRepository.findAll(spec, pageable);
 
@@ -75,6 +79,7 @@ public class MedicationRequestServiceImpl implements MedicationRequestService {
         if (id != null) queryParams.append("_id=").append(id).append("&");
         if (patientId != null) queryParams.append("patient=").append(patientId).append("&");
         if (status != null) queryParams.append("status=").append(status).append("&");
+        if (formularyDrugCd != null) queryParams.append("formulary-drug-cd=").append(formularyDrugCd).append("&");
         String query = queryParams.length() > 0 ? queryParams.substring(0, queryParams.length() - 1) : "";
 
         return bundleBuilder.searchSetWithPagination("MedicationRequest", fhirResources, pageResult.getTotalElements(), 
@@ -115,8 +120,8 @@ public class MedicationRequestServiceImpl implements MedicationRequestService {
         if (resource.hasMedicationCodeableConcept()) {
             CodeableConcept med = resource.getMedicationCodeableConcept();
             if (med.hasCoding()) {
-                String codeValue = med.getCodingFirstRep().getCode();
-                medicationCodeMasterRepository.findByCodeValue(codeValue)
+                String formularyDrugCd = med.getCodingFirstRep().getCode();
+                medicationCodeMasterRepository.findByFormularyDrugCd(formularyDrugCd)
                         .ifPresent(entity::setMedicationCode);
             }
         }
@@ -178,8 +183,8 @@ public class MedicationRequestServiceImpl implements MedicationRequestService {
         if (resource.hasMedicationCodeableConcept()) {
             CodeableConcept med = resource.getMedicationCodeableConcept();
             if (med.hasCoding()) {
-                String codeValue = med.getCodingFirstRep().getCode();
-                medicationCodeMasterRepository.findByCodeValue(codeValue)
+                String formularyDrugCd = med.getCodingFirstRep().getCode();
+                medicationCodeMasterRepository.findByFormularyDrugCd(formularyDrugCd)
                         .ifPresent(existing::setMedicationCode);
             }
         }

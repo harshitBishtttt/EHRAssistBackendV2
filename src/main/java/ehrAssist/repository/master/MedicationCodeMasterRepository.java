@@ -8,5 +8,5 @@ import java.util.Optional;
 
 @Repository
 public interface MedicationCodeMasterRepository extends JpaRepository<MedicationCodeMasterEntity, Integer> {
-    Optional<MedicationCodeMasterEntity> findByCodeValue(String codeValue);
+    Optional<MedicationCodeMasterEntity> findByFormularyDrugCd(String formularyDrugCd);
 }

@@ -18,14 +18,14 @@ public class MedicationCodeMasterEntity {
     @Column(name = "code_system")
     private String codeSystem;
 
-    @Column(name = "code_value", unique = true)
-    private String codeValue;
-
     @Column(name = "code_display")
     private String codeDisplay;
 
     @Column(name = "generic_name")
     private String genericName;
+
+    @Column(name = "formulary_drug_cd")
+    private String formularyDrugCd;
 
     @Column(name = "form_code")
     private String formCode;

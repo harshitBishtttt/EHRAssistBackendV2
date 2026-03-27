@@ -43,8 +43,9 @@ public class MedicationRequestMapper {
             CodeableConcept medication = new CodeableConcept();
             medication.addCoding()
                     .setSystem(entity.getMedicationCode().getCodeSystem())
-                    .setCode(entity.getMedicationCode().getCodeValue())
+                    .setCode(entity.getMedicationCode().getFormularyDrugCd())
                     .setDisplay(entity.getMedicationCode().getCodeDisplay());
+
             request.setMedication(medication);
         }
 

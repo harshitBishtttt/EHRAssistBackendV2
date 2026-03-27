@@ -8,7 +8,7 @@ import java.util.UUID;
 
 public interface MedicationRequestService {
     MedicationRequest getById(UUID id);
-    Bundle search(UUID id, UUID patientId, String status, Pageable pageable);
+    Bundle search(UUID id, UUID patientId, String status, String formularyDrugCd, Pageable pageable);
     MedicationRequest create(MedicationRequest resource);
     MedicationRequest update(UUID id, MedicationRequest resource);
     void delete(UUID id);
