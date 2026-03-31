@@ -11,6 +11,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -35,8 +36,9 @@ public class ObservationController {
             @RequestParam(required = false) String code,
             @RequestParam(required = false) String category,
             @RequestParam(name = "value-quantity", required = false) String valueQuantity,
+            @RequestParam(required = false) List<String> date,
             @PageableDefault(page = 0, size = 10) Pageable pageable) {
-        Bundle bundle = observationService.search(_id, patient, code, category, valueQuantity, pageable);
+        Bundle bundle = observationService.search(_id, patient, code, category, valueQuantity, date, pageable);
         return fhirResponseHelper.toResponse(bundle);
     }
 

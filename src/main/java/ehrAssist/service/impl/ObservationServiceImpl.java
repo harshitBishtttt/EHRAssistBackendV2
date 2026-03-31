@@ -10,8 +10,11 @@ import ehrAssist.repository.PractitionerRepository;
 import ehrAssist.repository.master.ObservationCodeMasterRepository;
 import ehrAssist.service.ObservationService;
 import ehrAssist.util.BundleBuilder;
+import ehrAssist.util.FhirDateSearchParser;
+import ehrAssist.util.FhirDateSearchParser.ParsedDateSearch;
 import ehrAssist.util.FhirQuantitySearchParser;
 import ehrAssist.util.FhirQuantitySearchParser.ParsedValueQuantity;
+import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.hl7.fhir.r4.model.Bundle;
@@ -27,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -55,14 +59,33 @@ public class ObservationServiceImpl implements ObservationService {
 
     @Override
     @Transactional(readOnly = true)
-    public Bundle search(UUID id, UUID patientId, String code, String category, String valueQuantity, Pageable pageable) {
+    public Bundle search(UUID id, UUID patientId, String code, String category, String valueQuantity,
+                         List<String> dateParams, Pageable pageable) {
         ParsedValueQuantity parsedQuantity = FhirQuantitySearchParser.parse(valueQuantity);
         if (valueQuantity != null && !valueQuantity.isBlank() && parsedQuantity == null) {
             return bundleBuilder.searchSetWithPagination("Observation", List.of(), 0L, 0, pageable.getPageSize(), "");
         }
 
+        List<ParsedDateSearch> parsedDates = new ArrayList<>();
+        List<String> dateRawTerms = new ArrayList<>();
+        if (dateParams != null) {
+            for (String d : dateParams) {
+                if (d == null || d.isBlank()) {
+                    continue;
+                }
+                String trimmed = d.trim();
+                ParsedDateSearch pd = FhirDateSearchParser.parse(trimmed);
+                if (pd == null) {
+                    return bundleBuilder.searchSetWithPagination("Observation", List.of(), 0L, 0, pageable.getPageSize(), "");
+                }
+                parsedDates.add(pd);
+                dateRawTerms.add(trimmed);
+            }
+        }
+
         if (id == null && patientId == null && code == null && category == null
-                && (valueQuantity == null || valueQuantity.isBlank())) {
+                && (valueQuantity == null || valueQuantity.isBlank())
+                && parsedDates.isEmpty()) {
             return bundleBuilder.searchSetWithPagination("Observation", List.of(), 0L, 0, pageable.getPageSize(), "");
         }
 
@@ -89,6 +112,9 @@ public class ObservationServiceImpl implements ObservationService {
         if (parsedQuantity != null) {
             spec = spec.and((root, query, cb) -> buildQuantityPredicates(root, cb, parsedQuantity));
         }
+        for (ParsedDateSearch pd : parsedDates) {
+            spec = spec.and((root, query, cb) -> buildObservationDatePredicate(root, cb, pd));
+        }
 
         Page<ObservationEntity> pageResult = observationRepository.findAll(spec, pageable);
         
@@ -107,10 +133,72 @@ public class ObservationServiceImpl implements ObservationService {
                     .append(URLEncoder.encode(valueQuantity, StandardCharsets.UTF_8))
                     .append("&");
         }
+        for (String rawDate : dateRawTerms) {
+            queryParams.append("date=").append(URLEncoder.encode(rawDate, StandardCharsets.UTF_8)).append("&");
+        }
         String query = queryParams.length() > 0 ? queryParams.substring(0, queryParams.length() - 1) : "";
 
         return bundleBuilder.searchSetWithPagination("Observation", fhirResources, pageResult.getTotalElements(), 
                 pageable.getPageNumber(), pageable.getPageSize(), query);
+    }
+
+    /**
+     * FHIR R4 {@code date} on Observation applies to {@code Observation.effective[x]} or {@code Observation.issued}
+     * (see Observation search parameters). Match if either field satisfies the criterion.
+     */
+    private Predicate buildObservationDatePredicate(
+            jakarta.persistence.criteria.Root<ObservationEntity> root,
+            jakarta.persistence.criteria.CriteriaBuilder cb,
+            ParsedDateSearch parsed) {
+        Path<LocalDateTime> eff = root.get("effectiveDate");
+        Path<LocalDateTime> iss = root.get("issued");
+
+        ParsedDateSearch compareAs = "ne".equals(parsed.prefix())
+                ? new ParsedDateSearch("eq", parsed.instant(), parsed.datePrecision())
+                : parsed;
+        boolean negate = "ne".equals(parsed.prefix());
+
+        Predicate onEff = cb.and(cb.isNotNull(eff), dateCompareOnPath(cb, eff, compareAs));
+        Predicate onIss = cb.and(cb.isNotNull(iss), dateCompareOnPath(cb, iss, compareAs));
+        Predicate positive = cb.or(onEff, onIss);
+
+        if (negate) {
+            return cb.and(cb.or(cb.isNotNull(eff), cb.isNotNull(iss)), cb.not(positive));
+        }
+        return positive;
+    }
+
+    private Predicate dateCompareOnPath(
+            jakarta.persistence.criteria.CriteriaBuilder cb,
+            Path<LocalDateTime> path,
+            ParsedDateSearch p) {
+        String prefix = p.prefix();
+        LocalDateTime instant = p.instant();
+        boolean datePrecision = p.datePrecision();
+        LocalDateTime nextDayStart = instant.plusDays(1);
+
+        if (datePrecision) {
+            return switch (prefix) {
+                case "eq", "ap" -> cb.and(
+                        cb.greaterThanOrEqualTo(path, instant),
+                        cb.lessThan(path, nextDayStart));
+                case "gt", "sa" -> cb.greaterThanOrEqualTo(path, nextDayStart);
+                case "ge" -> cb.greaterThanOrEqualTo(path, instant);
+                case "lt", "eb" -> cb.lessThan(path, instant);
+                case "le" -> cb.lessThan(path, nextDayStart);
+                default -> cb.and(
+                        cb.greaterThanOrEqualTo(path, instant),
+                        cb.lessThan(path, nextDayStart));
+            };
+        }
+        return switch (prefix) {
+            case "eq", "ap" -> cb.equal(path, instant);
+            case "gt", "sa" -> cb.greaterThan(path, instant);
+            case "ge" -> cb.greaterThanOrEqualTo(path, instant);
+            case "lt", "eb" -> cb.lessThan(path, instant);
+            case "le" -> cb.lessThanOrEqualTo(path, instant);
+            default -> cb.equal(path, instant);
+        };
     }
 
     private Predicate buildQuantityPredicates(
