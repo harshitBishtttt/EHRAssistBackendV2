@@ -36,8 +36,7 @@ public class ConditionCodeMasterEntity {
     @Column(name = "icd10_code")
     private String icd10Code;
 
-    @Column(name = "snomed_code")
-    private String snomedCode;
+
 
     @Builder.Default
     @Column(name = "active")
