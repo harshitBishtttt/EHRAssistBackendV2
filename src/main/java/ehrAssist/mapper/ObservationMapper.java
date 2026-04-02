@@ -45,6 +45,7 @@ public class ObservationMapper {
                     .setSystem(entity.getCodeMaster().getCodeSystem())
                     .setCode(entity.getCodeMaster().getLoincCode())
                     .setDisplay(entity.getCodeMaster().getCodeDisplay());
+            code.setText(entity.getCodeMaster().getCodeDisplay());
             observation.setCode(code);
         }
 
