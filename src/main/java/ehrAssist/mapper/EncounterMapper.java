@@ -80,6 +80,10 @@ public class EncounterMapper {
             encounter.addExtension("insurance", new StringType(entity.getInsurance()));
         }
 
+        if (entity.getClinicalNotes() != null) {
+            encounter.addExtension("clinicalNotes", new StringType(entity.getClinicalNotes()));
+        }
+
         return encounter;
     }
 
@@ -125,6 +129,11 @@ public class EncounterMapper {
         Extension insuranceExt = fhir.getExtensionByUrl("insurance");
         if (insuranceExt != null) {
             entity.setInsurance(insuranceExt.getValue().primitiveValue());
+        }
+
+        Extension clinicalNotesExt = fhir.getExtensionByUrl("clinicalNotes");
+        if (clinicalNotesExt != null) {
+            entity.setClinicalNotes(clinicalNotesExt.getValue().primitiveValue());
         }
 
         return entity;
