@@ -40,7 +40,11 @@ public class MarkReviewedServiceImpl implements MarkReviewedService {
                     .createdDate(obj.getCreatedDate())
                     .isReviewed(obj.getIsReviewed()).build();
         }
-        return null;
+        return MarkReviewedResponse.builder()
+                .reviewId(null)
+                .parentId(null)
+                .createdDate(null)
+                .isReviewed(false).build();
     }
 
 }
