@@ -1,8 +1,11 @@
 package ehrAssist.controller;
 
 import ehrAssist.dto.request.AiActionRequest;
+import ehrAssist.dto.request.MarkReviewedRequest;
 import ehrAssist.dto.response.AiActionResponse;
+import ehrAssist.dto.response.MarkReviewedResponse;
 import ehrAssist.service.AiActionsService;
+import ehrAssist.service.MarkReviewedService;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
@@ -16,9 +19,12 @@ import java.util.UUID;
 public class PatientThreeSixtyController {
 
     private final AiActionsService aiActionsService;
+    private final MarkReviewedService markReviewedService;
 
-    private PatientThreeSixtyController(AiActionsService aiActionsService) {
+    private PatientThreeSixtyController(AiActionsService aiActionsService,
+                                        MarkReviewedService markReviewedService) {
         this.aiActionsService = aiActionsService;
+        this.markReviewedService = markReviewedService;
     }
 
     @PostMapping(consumes = {"application/fhir+json", "application/json"}, produces = "application/fhir+json", path = "/create-recommendations")
@@ -43,4 +49,17 @@ public class PatientThreeSixtyController {
         aiActionsService.updateTaskStatus(actionId, status);
         return ResponseEntity.status(200).body(null);
     }
+
+    @PostMapping(path = "/create-review", produces = "application/fhir+json")
+    ResponseEntity<?> createReviewed(@RequestBody MarkReviewedRequest req) {
+        MarkReviewedResponse reviewed = markReviewedService.createReviewed(req);
+        return ResponseEntity.status(201).body(reviewed);
+    }
+
+    @GetMapping(path = "/get-review", produces = "application/fhir+json")
+    ResponseEntity<?> getPatientReview(@RequestParam UUID patientId) {
+        MarkReviewedResponse response = markReviewedService.getPatientReview(patientId);
+        return ResponseEntity.status(200).body(response);
+    }
+
 }
