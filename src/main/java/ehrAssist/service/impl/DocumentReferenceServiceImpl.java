@@ -1,6 +1,7 @@
 package ehrAssist.service.impl;
 
 import ehrAssist.entity.DocumentReferenceEntity;
+import ehrAssist.exception.FhirValidationException;
 import ehrAssist.exception.ResourceNotFoundException;
 import ehrAssist.mapper.DocumentReferenceMapper;
 import ehrAssist.repository.DocumentReferenceRepository;
@@ -82,32 +83,29 @@ public class DocumentReferenceServiceImpl implements DocumentReferenceService {
     public DocumentReference create(DocumentReference resource) {
         DocumentReferenceEntity entity = documentReferenceMapper.toEntity(resource);
 
-        if (resource.hasSubject()) {
-            String ref = resource.getSubject().getReference();
-            if (ref != null && ref.contains("/")) {
-                UUID patientId = UUID.fromString(ref.split("/")[1]);
-                entity.setPatient(patientRepository.findById(patientId)
-                        .orElseThrow(() -> new ResourceNotFoundException("Patient not found: " + patientId)));
-            }
+        if (!resource.hasSubject() || resource.getSubject().getReference() == null || resource.getSubject().getReference().isBlank()) {
+            throw new FhirValidationException("DocumentReference.subject is required");
         }
+        String patientRef = resource.getSubject().getReference();
+        if (!patientRef.startsWith("Patient/")) {
+            throw new FhirValidationException("DocumentReference.subject must reference Patient/{id}");
+        }
+        UUID patientId = UUID.fromString(patientRef.split("/")[1]);
+        entity.setPatient(patientRepository.findById(patientId)
+                .orElseThrow(() -> new ResourceNotFoundException("Patient not found: " + patientId)));
 
-        if (resource.hasContext() && resource.getContext().hasEncounter()) {
-            String ref = resource.getContext().getEncounterFirstRep().getReference();
-            if (ref != null && ref.contains("/")) {
-                UUID encId = UUID.fromString(ref.split("/")[1]);
-                entity.setEncounter(encounterRepository.findById(encId)
-                        .orElseThrow(() -> new ResourceNotFoundException("Encounter not found: " + encId)));
-            }
+        if (!resource.hasAuthor() || resource.getAuthorFirstRep().getReference() == null || resource.getAuthorFirstRep().getReference().isBlank()) {
+            throw new FhirValidationException("DocumentReference.author is required");
         }
+        String authorRef = resource.getAuthorFirstRep().getReference();
+        if (!authorRef.startsWith("Practitioner/")) {
+            throw new FhirValidationException("DocumentReference.author must reference Practitioner/{id}");
+        }
+        UUID practId = UUID.fromString(authorRef.split("/")[1]);
+        entity.setAuthor(practitionerRepository.findById(practId)
+                .orElseThrow(() -> new ResourceNotFoundException("Practitioner not found: " + practId)));
 
-        if (resource.hasAuthor()) {
-            String ref = resource.getAuthorFirstRep().getReference();
-            if (ref != null && ref.contains("/")) {
-                UUID practId = UUID.fromString(ref.split("/")[1]);
-                entity.setAuthor(practitionerRepository.findById(practId)
-                        .orElseThrow(() -> new ResourceNotFoundException("Practitioner not found: " + practId)));
-            }
-        }
+        // Encounter mapping is intentionally skipped for create right now.
 
         DocumentReferenceEntity saved = documentReferenceRepository.save(entity);
         return documentReferenceMapper.toFhirResource(saved);

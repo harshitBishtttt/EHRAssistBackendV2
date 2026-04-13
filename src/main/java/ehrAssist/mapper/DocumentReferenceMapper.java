@@ -102,6 +102,7 @@ public class DocumentReferenceMapper {
 
     public DocumentReferenceEntity toEntity(DocumentReference fhir) {
         DocumentReferenceEntity entity = new DocumentReferenceEntity();
+        entity.setContentType("text/plain");
 
         if (fhir.hasStatus()) {
             entity.setStatus(fhir.getStatus().toCode());
@@ -124,7 +125,9 @@ public class DocumentReferenceMapper {
         if (fhir.hasContent() && !fhir.getContent().isEmpty()) {
             Attachment attachment = fhir.getContentFirstRep().getAttachment();
             if (attachment != null) {
-                entity.setContentType(attachment.getContentType());
+                if (attachment.getContentType() != null && !attachment.getContentType().isBlank()) {
+                    entity.setContentType(attachment.getContentType());
+                }
                 if (attachment.hasData()) {
                     entity.setContentData(attachment.getData());
                 }

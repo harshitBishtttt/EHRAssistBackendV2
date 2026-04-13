@@ -1,6 +1,7 @@
 package ehrAssist.controller;
 
 import ca.uhn.fhir.context.FhirContext;
+import ehrAssist.dto.response.PractitionerDropdownResponse;
 import ehrAssist.service.PractitionerService;
 import ehrAssist.util.FhirResponseHelper;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +12,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -26,6 +28,11 @@ public class PractitionerController {
     public ResponseEntity<String> getById(@PathVariable UUID id) {
         Practitioner practitioner = practitionerService.getById(id);
         return fhirResponseHelper.toResponse(practitioner);
+    }
+
+    @GetMapping(value = "/dropdown", produces = "application/json")
+    public ResponseEntity<List<PractitionerDropdownResponse>> dropdown() {
+        return ResponseEntity.ok(practitionerService.listPractitionerDropdown());
     }
 
     @GetMapping(produces = "application/fhir+json")

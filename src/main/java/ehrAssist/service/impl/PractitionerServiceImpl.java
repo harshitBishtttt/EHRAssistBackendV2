@@ -1,5 +1,6 @@
 package ehrAssist.service.impl;
 
+import ehrAssist.dto.response.PractitionerDropdownResponse;
 import ehrAssist.entity.PractitionerEntity;
 import ehrAssist.exception.ResourceNotFoundException;
 import ehrAssist.mapper.PractitionerMapper;
@@ -78,6 +79,14 @@ public class PractitionerServiceImpl implements PractitionerService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<PractitionerDropdownResponse> listPractitionerDropdown() {
+        return practitionerRepository.findAll().stream()
+                .map(this::toDropdownResponse)
+                .toList();
+    }
+
+    @Override
     public Practitioner create(Practitioner resource) {
         PractitionerEntity entity = practitionerMapper.toEntity(resource);
         PractitionerEntity saved = practitionerRepository.save(entity);
@@ -111,5 +120,15 @@ public class PractitionerServiceImpl implements PractitionerService {
         PractitionerEntity entity = practitionerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Practitioner not found: " + id));
         practitionerRepository.delete(entity);
+    }
+
+    private PractitionerDropdownResponse toDropdownResponse(PractitionerEntity practitioner) {
+        String given = practitioner.getGivenName() == null ? "" : practitioner.getGivenName().trim();
+        String family = practitioner.getFamilyName() == null ? "" : practitioner.getFamilyName().trim();
+        String fullName = (given + " " + family).trim();
+        return PractitionerDropdownResponse.builder()
+                .id(practitioner.getId())
+                .name(fullName.isEmpty() ? "Unknown Practitioner" : fullName)
+                .build();
     }
 }
