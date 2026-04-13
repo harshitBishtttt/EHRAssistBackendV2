@@ -14,6 +14,7 @@ import org.hl7.fhir.r4.model.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -47,18 +48,24 @@ public class CareCoordinationNoteServiceImpl implements CareCoordinationNoteServ
         if (request.getCoordinatorEmail() == null || request.getCoordinatorEmail().isBlank()) {
             throw new FhirValidationException("coordinatorEmail is required");
         }
+        if (request.getCoordinatorName() == null || request.getCoordinatorName().isBlank()) {
+            throw new FhirValidationException("coordinatorName is required");
+        }
+        if (request.getCoordinatorRole() == null || request.getCoordinatorRole().isBlank()) {
+            throw new FhirValidationException("coordinatorRole is required");
+        }
         if (request.getCareNotes() == null || request.getCareNotes().isBlank()) {
             throw new FhirValidationException("careNotes is required");
         }
-        if (request.getCreatedAt() == null) {
-            throw new FhirValidationException("createdAt is required");
-        }
+
 
         CareCoordinationNoteEntity entity = CareCoordinationNoteEntity.builder()
                 .patientId(request.getPatientId())
                 .coordinatorEmail(request.getCoordinatorEmail())
+                .coordinatorName(request.getCoordinatorName())
+                .coordinatorRole(request.getCoordinatorRole())
                 .careNotes(request.getCareNotes())
-                .createdAt(request.getCreatedAt())
+                .createdAt(LocalDateTime.now())
                 .build();
 
         CareCoordinationNoteEntity saved = careCoordinationNoteRepository.save(entity);

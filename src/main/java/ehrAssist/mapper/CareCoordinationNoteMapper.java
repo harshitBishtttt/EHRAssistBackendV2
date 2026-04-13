@@ -2,8 +2,10 @@ package ehrAssist.mapper;
 
 import ehrAssist.entity.CareCoordinationNoteEntity;
 import org.hl7.fhir.r4.model.DocumentReference;
+import org.hl7.fhir.r4.model.Extension;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Reference;
+import org.hl7.fhir.r4.model.StringType;
 import org.springframework.stereotype.Component;
 
 import java.time.ZoneId;
@@ -19,7 +21,17 @@ public class CareCoordinationNoteMapper {
         docRef.setSubject(new Reference("Patient/" + entity.getPatientId()));
 
         Reference authorRef = new Reference();
-        authorRef.setIdentifier(new Identifier().setValue(entity.getCoordinatorEmail()));
+        authorRef.setIdentifier(new Identifier()
+                .setSystem("mailto")
+                .setValue(entity.getCoordinatorEmail()));
+        if (entity.getCoordinatorName() != null && !entity.getCoordinatorName().isBlank()) {
+            authorRef.setDisplay(entity.getCoordinatorName());
+        }
+        if (entity.getCoordinatorRole() != null && !entity.getCoordinatorRole().isBlank()) {
+            authorRef.addExtension(new Extension(
+                    "https://ehrassist.com/fhir/StructureDefinition/coordinator-role",
+                    new StringType(entity.getCoordinatorRole())));
+        }
         docRef.addAuthor(authorRef);
 
         if (entity.getCreatedAt() != null) {

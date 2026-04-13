@@ -33,6 +33,12 @@ public class CareCoordinationNoteEntity {
     @Column(name = "coordinator_email", nullable = false, length = 255)
     private String coordinatorEmail;
 
+    @Column(name = "coordinator_name", length = 255)
+    private String coordinatorName;
+
+    @Column(name = "coordinator_role", length = 255)
+    private String coordinatorRole;
+
     @Column(name = "care_notes", columnDefinition = "NVARCHAR(MAX)")
     private String careNotes;
 
