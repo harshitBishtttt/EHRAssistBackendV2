@@ -32,8 +32,9 @@ public class DocumentReferenceController {
     public ResponseEntity<String> search(
             @RequestParam(required = false) UUID _id,
             @RequestParam(required = false) UUID patient,
+            @RequestParam(name = "type.coding", required = false) String typeCoding,
             @PageableDefault(page = 0, size = 10) Pageable pageable) {
-        Bundle bundle = documentReferenceService.search(_id, patient, pageable);
+        Bundle bundle = documentReferenceService.search(_id, patient, typeCoding, pageable);
         return fhirResponseHelper.toResponse(bundle);
     }
 

@@ -53,7 +53,17 @@ public class DocumentReferenceMapper {
         }
 
         if (entity.getAuthor() != null) {
-            docRef.addAuthor(new Reference("Practitioner/" + entity.getAuthor().getId()));
+            String givenName = entity.getAuthor().getGivenName() == null ? "" : entity.getAuthor().getGivenName().trim();
+            String familyName = entity.getAuthor().getFamilyName() == null ? "" : entity.getAuthor().getFamilyName().trim();
+            String fullName = (givenName + " " + familyName).trim();
+            Reference authorRef = new Reference("Practitioner/" + entity.getAuthor().getId());
+            if (!fullName.isEmpty()) {
+                authorRef.setDisplay(fullName);
+            }
+            if (entity.getAuthor().getSpecialtyDisplay() != null && !entity.getAuthor().getSpecialtyDisplay().isBlank()) {
+                authorRef.addExtension("specialty", new StringType(entity.getAuthor().getSpecialtyDisplay()));
+            }
+            docRef.addAuthor(authorRef);
         }
 
         DocumentReferenceContentComponent content = docRef.addContent();

@@ -44,8 +44,8 @@ public class DocumentReferenceServiceImpl implements DocumentReferenceService {
 
     @Override
     @Transactional(readOnly = true)
-    public Bundle search(UUID id, UUID patientId, Pageable pageable) {
-        if (id == null && patientId == null) {
+    public Bundle search(UUID id, UUID patientId, String typeCoding, Pageable pageable) {
+        if (id == null && patientId == null && (typeCoding == null || typeCoding.isBlank())) {
             return bundleBuilder.searchSetWithPagination("DocumentReference", List.of(), 0L, 0, pageable.getPageSize(), "");
         }
 
@@ -56,6 +56,9 @@ public class DocumentReferenceServiceImpl implements DocumentReferenceService {
         }
         if (patientId != null) {
             spec = spec.and((root, query, cb) -> cb.equal(root.get("patient").get("id"), patientId));
+        }
+        if (typeCoding != null && !typeCoding.isBlank()) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("typeCode"), typeCoding));
         }
 
         Page<DocumentReferenceEntity> pageResult = documentReferenceRepository.findAll(spec, pageable);
@@ -68,6 +71,7 @@ public class DocumentReferenceServiceImpl implements DocumentReferenceService {
         StringBuilder queryParams = new StringBuilder();
         if (id != null) queryParams.append("_id=").append(id).append("&");
         if (patientId != null) queryParams.append("patient=").append(patientId).append("&");
+        if (typeCoding != null && !typeCoding.isBlank()) queryParams.append("type.coding=").append(typeCoding).append("&");
         String query = queryParams.length() > 0 ? queryParams.substring(0, queryParams.length() - 1) : "";
 
         return bundleBuilder.searchSetWithPagination("DocumentReference", fhirResources, pageResult.getTotalElements(), 
