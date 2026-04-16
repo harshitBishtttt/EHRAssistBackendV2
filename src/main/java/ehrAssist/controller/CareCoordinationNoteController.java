@@ -8,12 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.DocumentReference;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
@@ -29,8 +24,10 @@ public class CareCoordinationNoteController {
     @GetMapping(value = "/search", produces = "application/fhir+json")
     public ResponseEntity<String> search(
             @RequestParam UUID patientId,
-            @RequestParam String coordinatorEmail) {
-        Bundle bundle = careCoordinationNoteService.search(patientId, coordinatorEmail);
+            @RequestParam String coordinatorEmail,
+            @RequestParam UUID actionId,
+            @RequestParam String status) {
+        Bundle bundle = careCoordinationNoteService.search(patientId, coordinatorEmail, actionId, status);
         return fhirResponseHelper.toResponse(bundle);
     }
 
@@ -41,5 +38,16 @@ public class CareCoordinationNoteController {
                 .header("Content-Type", "application/fhir+json")
                 .header("Location", "/baseR4/CareCoordinationNote/" + created.getIdElement().getIdPart())
                 .body(fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(created));
+    }
+
+    @PatchMapping
+    public ResponseEntity<?> deactivateNotes(@RequestParam String email,
+                                             @RequestParam UUID patientId,
+                                             @RequestParam UUID actionId,
+                                             @RequestParam String status) {
+        careCoordinationNoteService.deactivateNotes(email, patientId, actionId, status);
+        return ResponseEntity.status(201)
+                .header("Content-Type", "application/fhir+json")
+                .body("");
     }
 }

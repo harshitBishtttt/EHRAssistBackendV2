@@ -14,8 +14,10 @@ import java.util.UUID;
 @AllArgsConstructor
 public class CreateCareCoordinationNoteRequest {
     private UUID patientId;
+    private UUID actionId;
     private String coordinatorEmail;
     private String coordinatorName;
     private String coordinatorRole;
     private String careNotes;
+    private String status;
 }

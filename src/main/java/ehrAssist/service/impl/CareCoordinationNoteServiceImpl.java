@@ -1,9 +1,11 @@
 package ehrAssist.service.impl;
 
 import ehrAssist.dto.request.CreateCareCoordinationNoteRequest;
+import ehrAssist.entity.AIRecommendedActionsEntity;
 import ehrAssist.entity.CareCoordinationNoteEntity;
 import ehrAssist.exception.FhirValidationException;
 import ehrAssist.mapper.CareCoordinationNoteMapper;
+import ehrAssist.repository.AIRecommendedActionsRepository;
 import ehrAssist.repository.CareCoordinationNoteRepository;
 import ehrAssist.service.CareCoordinationNoteService;
 import ehrAssist.util.BundleBuilder;
@@ -13,6 +15,7 @@ import org.hl7.fhir.r4.model.DocumentReference;
 import org.hl7.fhir.r4.model.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.ObjectUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -25,12 +28,14 @@ public class CareCoordinationNoteServiceImpl implements CareCoordinationNoteServ
     private final CareCoordinationNoteRepository careCoordinationNoteRepository;
     private final CareCoordinationNoteMapper careCoordinationNoteMapper;
     private final BundleBuilder bundleBuilder;
+    private final AIRecommendedActionsRepository aiRecommendedActionsRepository;
 
     @Override
     @Transactional(readOnly = true)
-    public Bundle search(UUID patientId, String coordinatorEmail) {
+    public Bundle search(UUID patientId, String coordinatorEmail, UUID actionId, String status) {
         List<Resource> resources = careCoordinationNoteRepository
-                .findByPatientIdAndCoordinatorEmail(patientId, coordinatorEmail)
+                .findByIsActiveAndPatientIdAndCoordinatorEmailAndAiRecommendedActionsEntity_IdAndStatus
+                        (true, patientId, coordinatorEmail, actionId, status)
                 .stream()
                 .map(careCoordinationNoteMapper::toFhirResource)
                 .map(Resource.class::cast)
@@ -57,18 +62,28 @@ public class CareCoordinationNoteServiceImpl implements CareCoordinationNoteServ
         if (request.getCareNotes() == null || request.getCareNotes().isBlank()) {
             throw new FhirValidationException("careNotes is required");
         }
-
-
+        if (ObjectUtils.isEmpty(request.getActionId())) {
+            throw new FhirValidationException("can't add a not without creating an action");
+        }
+        AIRecommendedActionsEntity againstThisAction = aiRecommendedActionsRepository
+                .findById(request.getActionId()).orElseThrow(() -> new FhirValidationException(request.getActionId() + "Particular Action ID is not present"));
         CareCoordinationNoteEntity entity = CareCoordinationNoteEntity.builder()
                 .patientId(request.getPatientId())
                 .coordinatorEmail(request.getCoordinatorEmail())
                 .coordinatorName(request.getCoordinatorName())
                 .coordinatorRole(request.getCoordinatorRole())
                 .careNotes(request.getCareNotes())
+                .isActive(true)
+                .aiRecommendedActionsEntity(againstThisAction)
+                .status(request.getStatus())
                 .createdAt(LocalDateTime.now())
                 .build();
 
         CareCoordinationNoteEntity saved = careCoordinationNoteRepository.save(entity);
         return careCoordinationNoteMapper.toFhirResource(saved);
+    }
+
+    public void deactivateNotes(String email, UUID patientId, UUID actionId, String status) {
+        careCoordinationNoteRepository.deactivateTheActivity(email, patientId, actionId, status);
     }
 }

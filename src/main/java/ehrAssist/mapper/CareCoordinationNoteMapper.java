@@ -1,5 +1,6 @@
 package ehrAssist.mapper;
 
+import ehrAssist.entity.AIRecommendedActionsEntity;
 import ehrAssist.entity.CareCoordinationNoteEntity;
 import org.hl7.fhir.r4.model.DocumentReference;
 import org.hl7.fhir.r4.model.Extension;
@@ -7,6 +8,7 @@ import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.StringType;
 import org.springframework.stereotype.Component;
+import org.springframework.util.ObjectUtils;
 
 import java.time.ZoneId;
 import java.util.Date;
@@ -24,23 +26,38 @@ public class CareCoordinationNoteMapper {
         authorRef.setIdentifier(new Identifier()
                 .setSystem("mailto")
                 .setValue(entity.getCoordinatorEmail()));
-        if (entity.getCoordinatorName() != null && !entity.getCoordinatorName().isBlank()) {
+
+        if (!ObjectUtils.isEmpty(entity.getCoordinatorName())) {
             authorRef.setDisplay(entity.getCoordinatorName());
         }
-        if (entity.getCoordinatorRole() != null && !entity.getCoordinatorRole().isBlank()) {
+        if (!ObjectUtils.isEmpty(entity.getCoordinatorRole())) {
             authorRef.addExtension(new Extension(
-                    "https://ehrassist.com/fhir/StructureDefinition/coordinator-role",
+                    "coordinator-role",
                     new StringType(entity.getCoordinatorRole())));
         }
         docRef.addAuthor(authorRef);
 
-        if (entity.getCreatedAt() != null) {
+        if (!ObjectUtils.isEmpty(entity.getCreatedAt())) {
             Date createdAt = Date.from(entity.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant());
             docRef.setDate(createdAt);
         }
 
-        if (entity.getCareNotes() != null) {
+        if (!ObjectUtils.isEmpty(entity.getCareNotes())) {
             docRef.setDescription(entity.getCareNotes());
+        }
+
+        if (!ObjectUtils.isEmpty(entity.getStatus())) {
+            docRef.addExtension(new Extension("status", new StringType(entity.getStatus())));
+        }
+
+        AIRecommendedActionsEntity recommendedAction = entity.getAiRecommendedActionsEntity();
+        if (!ObjectUtils.isEmpty(recommendedAction)) {
+            if (!ObjectUtils.isEmpty(recommendedAction.getId())) {
+                docRef.addExtension(new Extension("actionId", new StringType(recommendedAction.getId().toString())));
+            }
+            if (!ObjectUtils.isEmpty(recommendedAction.getAction())) {
+                docRef.addExtension(new Extension("recommended-action", new StringType(recommendedAction.getAction())));
+            }
         }
 
         return docRef;
