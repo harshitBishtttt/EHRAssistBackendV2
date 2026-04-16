@@ -23,7 +23,7 @@ public interface CareCoordinationNoteRepository extends JpaRepository<CareCoordi
             "WHERE coordinator_email =:email " +
             "and  patient_id = :patientId  " +
             "and recommendation_note_id = :actionId " +
-            "and status =: status "
+            "and status = :status "
             , nativeQuery = true)
     void deactivateTheActivity(String email, UUID patientId, UUID actionId, String status);
 }
