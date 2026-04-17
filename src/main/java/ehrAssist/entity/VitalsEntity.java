@@ -30,7 +30,7 @@ public class VitalsEntity {
     private UUID encounterId;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "observation_code_id")
+    @JoinColumn(name = "observation_code_id", referencedColumnName = "item_id")
     private ObservationCodeMasterEntity codeMaster;
 
     @Column(name = "status")

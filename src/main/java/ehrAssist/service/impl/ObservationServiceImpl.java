@@ -26,9 +26,11 @@ import org.hl7.fhir.r4.model.Observation;
 import org.hl7.fhir.r4.model.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.ObjectUtils;
 
 import java.math.BigDecimal;
 import java.net.URLEncoder;
@@ -122,7 +124,7 @@ public class ObservationServiceImpl implements ObservationService {
         }
 
         Page<ObservationEntity> pageResult = observationRepository.findAll(spec, pageable);
-        
+
         List<Resource> fhirResources = pageResult.getContent().stream()
                 .map(observationMapper::toFhirResource)
                 .map(Resource.class::cast)
@@ -143,7 +145,7 @@ public class ObservationServiceImpl implements ObservationService {
         }
         String query = queryParams.length() > 0 ? queryParams.substring(0, queryParams.length() - 1) : "";
 
-        return bundleBuilder.searchSetWithPagination("Observation", fhirResources, pageResult.getTotalElements(), 
+        return bundleBuilder.searchSetWithPagination("Observation", fhirResources, pageResult.getTotalElements(),
                 pageable.getPageNumber(), pageable.getPageSize(), query);
     }
 
@@ -342,28 +344,17 @@ public class ObservationServiceImpl implements ObservationService {
     @Override
     @Transactional(readOnly = true)
     public Bundle searchVitals(UUID patientId, String loincCode, Pageable pageable) {
-        Specification<VitalsEntity> spec = Specification.where(null);
-
-        if (patientId != null) {
-            spec = spec.and((root, query, cb) -> cb.equal(root.get("patientId"), patientId));
-        }
-        if (loincCode != null && !loincCode.isBlank()) {
-            spec = spec.and((root, query, cb) -> cb.equal(root.join("codeMaster").get("loincCode"), loincCode));
+        if (ObjectUtils.isEmpty(patientId) && ObjectUtils.isEmpty(loincCode)) {
+            return bundleBuilder.searchSet("Observation", List.of(), 0);
         }
 
-        Page<VitalsEntity> pageResult = vitalsRepository.findAll(spec, pageable);
+        Page<VitalsEntity> pageResult = vitalsRepository.searchVitals(patientId, loincCode, pageable);
 
         List<Resource> fhirResources = pageResult.getContent().stream()
                 .map(vitalsMapper::toFhirResource)
                 .map(Resource.class::cast)
                 .toList();
 
-        StringBuilder queryParams = new StringBuilder();
-        if (patientId != null) queryParams.append("patient=").append(patientId).append("&");
-        if (loincCode != null && !loincCode.isBlank()) queryParams.append("code=").append(loincCode).append("&");
-        String query = queryParams.length() > 0 ? queryParams.substring(0, queryParams.length() - 1) : "";
-
-        return bundleBuilder.searchSetWithPagination("Observation", fhirResources,
-                pageResult.getTotalElements(), pageable.getPageNumber(), pageable.getPageSize(), query);
+        return bundleBuilder.searchSet("Observation", fhirResources, fhirResources.size());
     }
 }

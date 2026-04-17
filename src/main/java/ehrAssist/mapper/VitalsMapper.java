@@ -4,10 +4,10 @@ import ehrAssist.entity.VitalsEntity;
 import org.hl7.fhir.r4.model.*;
 import org.hl7.fhir.r4.model.Observation.ObservationStatus;
 import org.springframework.stereotype.Component;
-import org.springframework.util.ObjectUtils;
 
-import java.time.ZoneId;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Date;
 
 @Component
@@ -18,12 +18,12 @@ public class VitalsMapper {
 
         observation.setId(entity.getId().toString());
 
-        if (!ObjectUtils.isEmpty(entity.getStatus())) {
+        if (entity.getStatus() != null) {
             observation.setStatus(ObservationStatus.fromCode(entity.getStatus()));
         }
 
-        if (!ObjectUtils.isEmpty(entity.getCodeMaster())) {
-            if (!ObjectUtils.isEmpty(entity.getCodeMaster().getFhirCategoryCode())) {
+        if (entity.getCodeMaster() != null) {
+            if (entity.getCodeMaster().getFhirCategoryCode() != null) {
                 CodeableConcept category = new CodeableConcept();
                 category.addCoding()
                         .setSystem("http://terminology.hl7.org/CodeSystem/observation-category")
@@ -40,44 +40,69 @@ public class VitalsMapper {
             observation.setCode(code);
         }
 
-        if (!ObjectUtils.isEmpty(entity.getPatientId())) {
+        if (entity.getPatientId() != null) {
             observation.setSubject(new Reference("Patient/" + entity.getPatientId()));
         }
 
-        if (!ObjectUtils.isEmpty(entity.getEncounterId())) {
+        if (entity.getEncounterId() != null) {
             observation.setEncounter(new Reference("Encounter/" + entity.getEncounterId()));
         }
 
-        if (!ObjectUtils.isEmpty(entity.getEffectiveDate())) {
+        if (entity.getEffectiveDate() != null) {
             observation.setEffective(new DateTimeType(toDate(entity.getEffectiveDate())));
         }
 
-        if (!ObjectUtils.isEmpty(entity.getValueQuantity())) {
+        if (entity.getValueQuantity() != null) {
             String unit = entity.getValueUnit();
-            if (ObjectUtils.isEmpty(unit) && !ObjectUtils.isEmpty(entity.getCodeMaster())) {
+            if (unit == null && entity.getCodeMaster() != null) {
                 unit = entity.getCodeMaster().getExpectedUnit();
             }
-            observation.setValue(new Quantity()
+            Quantity quantity = new Quantity()
                     .setValue(entity.getValueQuantity())
                     .setUnit(unit)
-                    .setSystem("http://unitsofmeasure.org"));
-        } else if (!ObjectUtils.isEmpty(entity.getValueString())) {
+                    .setSystem("http://unitsofmeasure.org");
+            observation.setValue(quantity);
+        } else if (entity.getValueString() != null) {
             observation.setValue(new StringType(entity.getValueString()));
         }
 
-        if (!ObjectUtils.isEmpty(entity.getInterpretationCode())) {
+        if (entity.getInterpretationCode() != null) {
             CodeableConcept interpretation = new CodeableConcept();
             interpretation.addCoding().setCode(entity.getInterpretationCode());
             observation.addInterpretation(interpretation);
         }
 
-        if (!ObjectUtils.isEmpty(entity.getCodeMaster())) {
-            var low = entity.getCodeMaster().getReferenceRangeLow();
-            var high = entity.getCodeMaster().getReferenceRangeHigh();
-            if (!ObjectUtils.isEmpty(low) || !ObjectUtils.isEmpty(high)) {
+        if (entity.getCodeMaster() != null) {
+            BigDecimal low = entity.getCodeMaster().getReferenceRangeLow();
+            BigDecimal high = entity.getCodeMaster().getReferenceRangeHigh();
+            if (low != null || high != null) {
                 Observation.ObservationReferenceRangeComponent range = observation.addReferenceRange();
-                if (!ObjectUtils.isEmpty(low)) range.setLow(new Quantity().setValue(low));
-                if (!ObjectUtils.isEmpty(high)) range.setHigh(new Quantity().setValue(high));
+                if (low != null) range.setLow(new Quantity().setValue(low));
+                if (high != null) range.setHigh(new Quantity().setValue(high));
+            }
+        }
+
+        if (entity.getCodeMaster() != null || entity.getValueQuantity() != null || entity.getValueString() != null) {
+            Observation.ObservationComponentComponent component = observation.addComponent();
+            if (entity.getCodeMaster() != null) {
+                CodeableConcept compCode = new CodeableConcept();
+                compCode.addCoding()
+                        .setSystem(entity.getCodeMaster().getCodeSystem())
+                        .setCode(entity.getCodeMaster().getLoincCode())
+                        .setDisplay(entity.getCodeMaster().getCodeDisplay());
+                component.setCode(compCode);
+            }
+            if (entity.getValueQuantity() != null) {
+                String unit = entity.getValueUnit();
+                if (unit == null && entity.getCodeMaster() != null) {
+                    unit = entity.getCodeMaster().getExpectedUnit();
+                }
+                component.setValue(new Quantity()
+                        .setValue(entity.getValueQuantity())
+                        .setUnit(unit)
+                        .setSystem("http://unitsofmeasure.org"));
+            } else if (entity.getValueString() != null) {
+                component.setValue(new StringType(entity.getValueString()));
             }
         }
 
