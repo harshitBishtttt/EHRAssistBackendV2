@@ -64,4 +64,13 @@ public class ObservationController {
         observationService.delete(id);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping(value = "/vitals/search", produces = "application/fhir+json")
+    public ResponseEntity<String> searchVitals(
+            @RequestParam(required = false) UUID patient,
+            @RequestParam(required = false) String code,
+            @PageableDefault(page = 0, size = 10) Pageable pageable) {
+        Bundle bundle = observationService.searchVitals(patient, code, pageable);
+        return fhirResponseHelper.toResponse(bundle);
+    }
 }

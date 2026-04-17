@@ -14,4 +14,6 @@ public interface ObservationService {
     Observation create(Observation resource);
     Observation update(UUID id, Observation resource);
     void delete(UUID id);
+
+    Bundle searchVitals(UUID patientId, String loincCode, Pageable pageable);
 }
