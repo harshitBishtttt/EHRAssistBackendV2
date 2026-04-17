@@ -47,23 +47,17 @@ public class CareCoordinationNoteServiceImpl implements CareCoordinationNoteServ
     @Override
     @Transactional
     public DocumentReference create(CreateCareCoordinationNoteRequest request) {
-        if (request.getPatientId() == null) {
-            throw new FhirValidationException("patientId is required");
+        if (ObjectUtils.isEmpty(request.getPatientId())) {
+            throw new FhirValidationException("Patient Id missing");
         }
-        if (request.getCoordinatorEmail() == null || request.getCoordinatorEmail().isBlank()) {
-            throw new FhirValidationException("coordinatorEmail is required");
-        }
-        if (request.getCoordinatorName() == null || request.getCoordinatorName().isBlank()) {
-            throw new FhirValidationException("coordinatorName is required");
-        }
-        if (request.getCoordinatorRole() == null || request.getCoordinatorRole().isBlank()) {
-            throw new FhirValidationException("coordinatorRole is required");
-        }
-        if (request.getCareNotes() == null || request.getCareNotes().isBlank()) {
-            throw new FhirValidationException("careNotes is required");
+        if (ObjectUtils.isEmpty(request.getStatus())) {
+            throw new FhirValidationException("Status is missing");
         }
         if (ObjectUtils.isEmpty(request.getActionId())) {
-            throw new FhirValidationException("can't add a not without creating an action");
+            throw new FhirValidationException("Action Id missing");
+        }
+        if (ObjectUtils.isEmpty(request.getCoordinatorEmail())) {
+            throw new FhirValidationException("Coordinator Email missing");
         }
         AIRecommendedActionsEntity againstThisAction = aiRecommendedActionsRepository
                 .findById(request.getActionId()).orElseThrow(() -> new FhirValidationException(request.getActionId() + "Particular Action ID is not present"));
@@ -75,7 +69,7 @@ public class CareCoordinationNoteServiceImpl implements CareCoordinationNoteServ
                 .careNotes(request.getCareNotes())
                 .isActive(true)
                 .aiRecommendedActionsEntity(againstThisAction)
-                .status("pending")
+                .status(request.getStatus())
                 .createdAt(LocalDateTime.now())
                 .build();
 
