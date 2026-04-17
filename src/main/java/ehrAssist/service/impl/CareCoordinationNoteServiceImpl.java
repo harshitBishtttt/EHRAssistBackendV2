@@ -75,7 +75,7 @@ public class CareCoordinationNoteServiceImpl implements CareCoordinationNoteServ
                 .careNotes(request.getCareNotes())
                 .isActive(true)
                 .aiRecommendedActionsEntity(againstThisAction)
-                .status(request.getStatus())
+                .status("pending")
                 .createdAt(LocalDateTime.now())
                 .build();
 
