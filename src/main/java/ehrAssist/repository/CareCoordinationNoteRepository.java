@@ -19,7 +19,7 @@ public interface CareCoordinationNoteRepository extends JpaRepository<CareCoordi
 
     @Modifying
     @Transactional
-    @Query(value = "UPDATE care_coordination_notes SET is_active = false " +
+    @Query(value = "UPDATE care_coordination_notes SET is_active = 0 " +
             "WHERE coordinator_email =:email " +
             "and  patient_id = :patientId  " +
             "and recommendation_note_id = :actionId " +
