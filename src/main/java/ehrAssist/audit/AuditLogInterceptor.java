@@ -381,14 +381,7 @@ public class AuditLogInterceptor implements HandlerInterceptor {
         return null;
     }
 
-    /**
-     * Extracts a patient UUID from a FHIR JSON response. Handles:
-     * <ul>
-     *     <li>Single Patient resource — returns {@code id}</li>
-     *     <li>Bundle of Patients — returns first Patient's id</li>
-     *     <li>Any resource with {@code subject.reference = "Patient/<uuid>"}</li>
-     * </ul>
-     */
+
     private UUID extractPatientIdFromBody(JsonNode root) {
         try {
             if (root == null) {
