@@ -92,6 +92,10 @@ public class AuditLogInterceptor implements HandlerInterceptor {
         int status = response != null ? response.getStatus() : 0;
         String httpMethod = safe(request.getMethod(), "UNKNOWN");
 
+        String resourceType = extractResourceType(request);
+        String resourceId = extractResourceId(request);
+        UUID patientId = extractPatientId(request, resourceType, resourceId);
+
         return FhirAuditEventEntity.builder()
                 .recorded(LocalDateTime.now())
                 .action(mapAction(httpMethod))
@@ -104,9 +108,9 @@ public class AuditLogInterceptor implements HandlerInterceptor {
                 .requestQuery(truncate(request.getQueryString(), MAX_QUERY_LEN))
                 .responseStatus(status)
                 .executionTimeMs(computeElapsedMs(request))
-                .resourceType(truncate(extractResourceType(request), MAX_RESOURCE_TYPE_LEN))
-                .resourceId(truncate(extractResourceId(request), MAX_RESOURCE_ID_LEN))
-                .patientId(extractPatientId(request))
+                .resourceType(truncate(resourceType, MAX_RESOURCE_TYPE_LEN))
+                .resourceId(truncate(resourceId, MAX_RESOURCE_ID_LEN))
+                .patientId(patientId)
                 .build();
     }
 
@@ -235,34 +239,44 @@ public class AuditLogInterceptor implements HandlerInterceptor {
     }
 
     /**
-     * Tries Spring's URI template variables first (reliable: {id}, {resourceId}),
-     * else returns null. Must be a UUID or numeric to be considered valid.
+     * Resolves resource id from (in order):
+     * path vars {@code id} / {@code resourceId}, then FHIR search params
+     * {@code _id} / {@code id}. Returns null if nothing present.
      */
     @SuppressWarnings("unchecked")
     private String extractResourceId(HttpServletRequest request) {
         try {
             Map<String, String> vars = (Map<String, String>) request.getAttribute(
                     HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE);
-            if (ObjectUtils.isEmpty(vars)) {
-                return null;
+            if (!ObjectUtils.isEmpty(vars)) {
+                String fromPath = firstNonEmpty(vars.get("id"), vars.get("resourceId"));
+                if (!ObjectUtils.isEmpty(fromPath)) {
+                    return fromPath;
+                }
             }
-            String candidate = vars.get("id");
-            if (ObjectUtils.isEmpty(candidate)) {
-                candidate = vars.get("resourceId");
-            }
-            return ObjectUtils.isEmpty(candidate) ? null : candidate;
+            String fromQuery = firstNonEmpty(
+                    request.getParameter("_id"),
+                    request.getParameter("id")
+            );
+            return ObjectUtils.isEmpty(fromQuery) ? null : fromQuery;
         } catch (Exception e) {
             return null;
         }
     }
 
     /**
-     * Resolves patient id from (in order): path variable {@code patientId}, then
-     * query params {@code patientId}, {@code patient}, {@code subject}.
+     * Resolves patient id from (in priority order):
+     * <ol>
+     *     <li>path var {@code patientId}</li>
+     *     <li>query params {@code patientId}, {@code patient_id}, {@code patient}, {@code subject}</li>
+     *     <li>if resource type is {@code Patient} and a resource id was captured, use that</li>
+     * </ol>
      * Returns null if nothing parseable as UUID is found.
      */
     @SuppressWarnings("unchecked")
-    private UUID extractPatientId(HttpServletRequest request) {
+    private UUID extractPatientId(HttpServletRequest request,
+                                  String resourceType,
+                                  String resourceId) {
         try {
             Map<String, String> vars = (Map<String, String>) request.getAttribute(
                     HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE);
@@ -272,14 +286,32 @@ public class AuditLogInterceptor implements HandlerInterceptor {
                     return fromPath;
                 }
             }
-            String[] keys = {"patientId", "patient", "subject"};
+            String[] keys = {"patientId", "patient_id", "patient", "subject"};
             for (String key : keys) {
                 UUID parsed = parseUuidQuietly(request.getParameter(key));
                 if (parsed != null) {
                     return parsed;
                 }
             }
+            if ("Patient".equalsIgnoreCase(resourceType) && !ObjectUtils.isEmpty(resourceId)) {
+                UUID mirrored = parseUuidQuietly(resourceId);
+                if (mirrored != null) {
+                    return mirrored;
+                }
+            }
         } catch (Exception ignored) {
+        }
+        return null;
+    }
+
+    private String firstNonEmpty(String... values) {
+        if (values == null) {
+            return null;
+        }
+        for (String v : values) {
+            if (!ObjectUtils.isEmpty(v)) {
+                return v;
+            }
         }
         return null;
     }
