@@ -96,19 +96,6 @@ public class EncounterServiceImpl implements EncounterService {
         return bundleBuilder.searchSetWithPagination("Encounter", fhirResources, pageResult.getTotalElements(),
                 pageable.getPageNumber(), pageable.getPageSize(), query);
     }
-
-    /**
-     * Parse FHIR date search parameter with prefixes according to FHIR R4 specification
-     * Supports: eq, ne, gt, lt, ge, le, sa, eb, ap
-     * <p>
-     * This implementation searches for encounters that are ACTIVE/OVERLAPPING during the specified date/range
-     * An encounter overlaps if: periodStart <= searchEnd AND (periodEnd >= searchStart OR periodEnd is null)
-     * <p>
-     * Examples:
-     * - date=2024-03-20 (encounters active on this date)
-     * - date=ge2024-01-01 (encounters active on or after this date)
-     * - date=lt2024-12-31 (encounters that started before this date)
-     */
     private Specification<EncounterEntity> parseDateSearchParameter(String dateParam) {
         return (root, query, cb) -> {
             String prefix = "eq";
