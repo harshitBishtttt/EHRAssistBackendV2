@@ -1,5 +1,7 @@
 package ehrAssist.audit;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import ehrAssist.entity.FhirAuditEventEntity;
 import ehrAssist.repository.FhirAuditEventRepository;
 import ehrAssist.security.AuthUtils;
@@ -11,7 +13,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.ObjectUtils;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.HandlerMapping;
+import org.springframework.web.util.ContentCachingResponseWrapper;
+import org.springframework.web.util.WebUtils;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
@@ -40,8 +45,10 @@ public class AuditLogInterceptor implements HandlerInterceptor {
     private static final int MAX_RESOURCE_ID_LEN = 64;
     private static final int MAX_AGENT_ID_LEN = 128;
     private static final int MAX_AGENT_EMAIL_LEN = 255;
+    private static final int MAX_RESPONSE_BODY_BYTES = 512_000;
 
     private final FhirAuditEventRepository auditRepository;
+    private final ObjectMapper objectMapper;
 
     @Override
     public boolean preHandle(HttpServletRequest request,
@@ -95,6 +102,17 @@ public class AuditLogInterceptor implements HandlerInterceptor {
         String resourceType = extractResourceType(request);
         String resourceId = extractResourceId(request);
         UUID patientId = extractPatientId(request, resourceType, resourceId);
+
+        JsonNode parsedBody = null;
+        if (ObjectUtils.isEmpty(resourceId) || patientId == null) {
+            parsedBody = parseResponseBody(response, status);
+        }
+        if (ObjectUtils.isEmpty(resourceId) && parsedBody != null) {
+            resourceId = extractResourceIdFromBody(parsedBody, resourceType);
+        }
+        if (patientId == null && parsedBody != null) {
+            patientId = extractPatientIdFromBody(parsedBody);
+        }
 
         return FhirAuditEventEntity.builder()
                 .recorded(LocalDateTime.now())
@@ -302,6 +320,149 @@ public class AuditLogInterceptor implements HandlerInterceptor {
         } catch (Exception ignored) {
         }
         return null;
+    }
+
+    /**
+     * Reads the response body cached by {@link AuditResponseCachingFilter} and
+     * parses it as JSON. Returns {@code null} if the wrapper is absent, body is
+     * empty, status is non-2xx, or parsing fails. Very large bodies are skipped.
+     */
+    private JsonNode parseResponseBody(HttpServletResponse response, int status) {
+        if (response == null || status < 200 || status >= 300) {
+            return null;
+        }
+        try {
+            ContentCachingResponseWrapper wrapper = WebUtils.getNativeResponse(
+                    response, ContentCachingResponseWrapper.class);
+            if (wrapper == null) {
+                return null;
+            }
+            byte[] bytes = wrapper.getContentAsByteArray();
+            if (bytes == null || bytes.length == 0 || bytes.length > MAX_RESPONSE_BODY_BYTES) {
+                return null;
+            }
+            String contentType = wrapper.getContentType();
+            if (!ObjectUtils.isEmpty(contentType)
+                    && !contentType.toLowerCase().contains("json")) {
+                return null;
+            }
+            return objectMapper.readTree(new String(bytes, StandardCharsets.UTF_8));
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * When the URL had no specific id but the response is a single FHIR resource
+     * matching the expected {@code resourceType}, pulls {@code id} from the JSON.
+     * For Bundles, pulls the first entry's resource id when it matches the type.
+     */
+    private String extractResourceIdFromBody(JsonNode root, String expectedType) {
+        try {
+            if (root == null) {
+                return null;
+            }
+            String rootType = text(root, "resourceType");
+            if (!ObjectUtils.isEmpty(rootType)
+                    && !"Bundle".equalsIgnoreCase(rootType)
+                    && (ObjectUtils.isEmpty(expectedType) || expectedType.equalsIgnoreCase(rootType))) {
+                String id = text(root, "id");
+                return ObjectUtils.isEmpty(id) ? null : id;
+            }
+            if ("Bundle".equalsIgnoreCase(rootType)) {
+                JsonNode firstResource = firstEntryResource(root, expectedType);
+                if (firstResource != null) {
+                    String id = text(firstResource, "id");
+                    return ObjectUtils.isEmpty(id) ? null : id;
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
+    }
+
+    /**
+     * Extracts a patient UUID from a FHIR JSON response. Handles:
+     * <ul>
+     *     <li>Single Patient resource — returns {@code id}</li>
+     *     <li>Bundle of Patients — returns first Patient's id</li>
+     *     <li>Any resource with {@code subject.reference = "Patient/<uuid>"}</li>
+     * </ul>
+     */
+    private UUID extractPatientIdFromBody(JsonNode root) {
+        try {
+            if (root == null) {
+                return null;
+            }
+            String rootType = text(root, "resourceType");
+            if ("Patient".equalsIgnoreCase(rootType)) {
+                return parseUuidQuietly(text(root, "id"));
+            }
+            if ("Bundle".equalsIgnoreCase(rootType)) {
+                JsonNode firstPatient = firstEntryResource(root, "Patient");
+                if (firstPatient != null) {
+                    UUID id = parseUuidQuietly(text(firstPatient, "id"));
+                    if (id != null) {
+                        return id;
+                    }
+                }
+            }
+            UUID fromSubject = parseUuidQuietly(
+                    stripPatientReferencePrefix(textAt(root, "subject", "reference")));
+            if (fromSubject != null) {
+                return fromSubject;
+            }
+            UUID fromPatient = parseUuidQuietly(
+                    stripPatientReferencePrefix(textAt(root, "patient", "reference")));
+            if (fromPatient != null) {
+                return fromPatient;
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
+    }
+
+    private JsonNode firstEntryResource(JsonNode bundleRoot, String expectedType) {
+        JsonNode entries = bundleRoot.get("entry");
+        if (entries == null || !entries.isArray()) {
+            return null;
+        }
+        for (JsonNode entry : entries) {
+            JsonNode resource = entry.get("resource");
+            if (resource == null) {
+                continue;
+            }
+            if (ObjectUtils.isEmpty(expectedType)
+                    || expectedType.equalsIgnoreCase(text(resource, "resourceType"))) {
+                return resource;
+            }
+        }
+        return null;
+    }
+
+    private String text(JsonNode node, String field) {
+        if (node == null) {
+            return null;
+        }
+        JsonNode child = node.get(field);
+        return (child == null || child.isNull()) ? null : child.asText(null);
+    }
+
+    private String textAt(JsonNode node, String first, String second) {
+        if (node == null) {
+            return null;
+        }
+        JsonNode child = node.get(first);
+        return child == null ? null : text(child, second);
+    }
+
+    private String stripPatientReferencePrefix(String reference) {
+        if (ObjectUtils.isEmpty(reference)) {
+            return null;
+        }
+        String prefix = "Patient/";
+        int idx = reference.indexOf(prefix);
+        return idx >= 0 ? reference.substring(idx + prefix.length()) : reference;
     }
 
     private String firstNonEmpty(String... values) {
