@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "fhir_audit_event")
+@Table(name = "fhir_audit_logs")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
