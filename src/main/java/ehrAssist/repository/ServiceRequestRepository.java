@@ -11,4 +11,5 @@ import java.util.UUID;
 @Repository
 public interface ServiceRequestRepository extends JpaRepository<ServiceRequestEntity, UUID>, JpaSpecificationExecutor<ServiceRequestEntity> {
     List<ServiceRequestEntity> findByPatientId(UUID patientId);
+    List<ServiceRequestEntity> findByPatientIdIn(List<UUID> patientIds);
 }

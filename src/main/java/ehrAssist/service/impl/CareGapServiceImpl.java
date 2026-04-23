@@ -37,12 +37,16 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
@@ -83,14 +87,50 @@ public class CareGapServiceImpl implements CareGapService {
         UUID organizationId = parseReference(organization, "Organization");
 
         List<PatientEntity> patients = resolvePatients(subjectId, practitionerId, organizationId);
+        List<UUID> patientIds = patients.stream().map(PatientEntity::getId).toList();
         String normalizedStatus = status.trim().toLowerCase(Locale.ROOT);
 
         Bundle bundle = new Bundle();
         bundle.setType(Bundle.BundleType.COLLECTION);
         bundle.setTimestamp(new Date());
 
+        if (patientIds.isEmpty()) {
+            bundle.setTotal(0);
+            return bundle;
+        }
+
+        Map<UUID, List<ConditionEntity>> conditionsByPatientId = groupByPatientId(
+                conditionRepository.findAllByPatientIdInWithCodeMaster(patientIds),
+                ConditionEntity::getPatient
+        );
+        Map<UUID, List<ObservationEntity>> observationsByPatientId = groupByPatientId(
+                observationRepository.findAllByPatientIdInWithCodeMaster(patientIds),
+                ObservationEntity::getPatient
+        );
+        Map<UUID, List<ServiceRequestEntity>> serviceRequestsByPatientId = groupByPatientId(
+                serviceRequestRepository.findByPatientIdIn(patientIds),
+                ServiceRequestEntity::getPatient
+        );
+        Map<UUID, List<AppointmentEntity>> appointmentsByPatientId = groupByPatientId(
+                appointmentRepository.findByPatientIdIn(patientIds),
+                AppointmentEntity::getPatient
+        );
+        Map<UUID, List<MedicationRequestEntity>> medicationsByPatientId = groupByPatientId(
+                medicationRequestRepository.findAllByPatientIdInWithMedicationCode(patientIds),
+                MedicationRequestEntity::getPatient
+        );
+
         patients.stream()
-                .flatMap(patient -> evaluatePatient(patient, periodStart, periodEnd).stream())
+                .flatMap(patient -> evaluatePatient(
+                        patient,
+                        conditionsByPatientId.getOrDefault(patient.getId(), List.of()),
+                        observationsByPatientId.getOrDefault(patient.getId(), List.of()),
+                        serviceRequestsByPatientId.getOrDefault(patient.getId(), List.of()),
+                        appointmentsByPatientId.getOrDefault(patient.getId(), List.of()),
+                        medicationsByPatientId.getOrDefault(patient.getId(), List.of()),
+                        periodStart,
+                        periodEnd
+                ).stream())
                 .filter(evaluation -> matchesStatus(evaluation.gapStatus(), normalizedStatus))
                 .map(evaluation -> toMeasureReport(evaluation, periodStart, periodEnd))
                 .forEach(report -> bundle.addEntry()
@@ -148,28 +188,29 @@ public class CareGapServiceImpl implements CareGapService {
 
     private List<PatientEntity> resolvePatients(UUID subjectId, UUID practitionerId, UUID organizationId) {
         if (subjectId != null) {
-            PatientEntity patient = patientRepository.findById(subjectId)
+            PatientEntity patient = patientRepository.findWithNamesById(subjectId)
                     .orElseThrow(() -> new ResourceNotFoundException("Patient not found: " + subjectId));
             return List.of(patient);
         }
         if (practitionerId != null) {
             practitionerRepository.findById(practitionerId)
                     .orElseThrow(() -> new ResourceNotFoundException("Practitioner not found: " + practitionerId));
-            return patientRepository.findByPrimaryPractitionerId(practitionerId);
+            return patientRepository.findWithNamesByPrimaryPractitionerId(practitionerId);
         }
 
         organizationRepository.findById(organizationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Organization not found: " + organizationId));
-        return patientRepository.findByManagingOrganizationId(organizationId);
+        return patientRepository.findWithNamesByManagingOrganizationId(organizationId);
     }
 
-    private List<GapEvaluation> evaluatePatient(PatientEntity patient, LocalDate periodStart, LocalDate periodEnd) {
-        List<ConditionEntity> conditions = conditionRepository.findByPatientId(patient.getId());
-        List<ObservationEntity> observations = observationRepository.findByPatientId(patient.getId());
-        List<ServiceRequestEntity> serviceRequests = serviceRequestRepository.findByPatientId(patient.getId());
-        List<AppointmentEntity> appointments = appointmentRepository.findByPatientId(patient.getId());
-        List<MedicationRequestEntity> medications = medicationRequestRepository.findByPatientId(patient.getId());
-
+    private List<GapEvaluation> evaluatePatient(PatientEntity patient,
+                                                List<ConditionEntity> conditions,
+                                                List<ObservationEntity> observations,
+                                                List<ServiceRequestEntity> serviceRequests,
+                                                List<AppointmentEntity> appointments,
+                                                List<MedicationRequestEntity> medications,
+                                                LocalDate periodStart,
+                                                LocalDate periodEnd) {
         List<GapEvaluation> evaluations = new ArrayList<>();
 
         firstMatchingCondition(conditions, this::isActiveDiabetesCondition)
@@ -189,6 +230,15 @@ public class CareGapServiceImpl implements CareGapService {
                 .ifPresent(evaluations::add);
 
         return evaluations;
+    }
+
+    private <T> Map<UUID, List<T>> groupByPatientId(List<T> resources, Function<T, PatientEntity> patientExtractor) {
+        if (resources == null || resources.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return resources.stream()
+                .filter(resource -> patientExtractor.apply(resource) != null)
+                .collect(Collectors.groupingBy(resource -> patientExtractor.apply(resource).getId()));
     }
 
     private java.util.Optional<ConditionEntity> firstMatchingCondition(List<ConditionEntity> conditions, Predicate<ConditionEntity> predicate) {

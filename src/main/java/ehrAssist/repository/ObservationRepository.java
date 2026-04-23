@@ -15,6 +15,9 @@ import java.util.UUID;
 public interface ObservationRepository extends JpaRepository<ObservationEntity, UUID>, JpaSpecificationExecutor<ObservationEntity> {
     List<ObservationEntity> findByPatientId(UUID patientId);
 
+    @Query("select o from ObservationEntity o join fetch o.codeMaster where o.patient.id in :patientIds")
+    List<ObservationEntity> findAllByPatientIdInWithCodeMaster(List<UUID> patientIds);
+
     @Query(value = "SELECT TOP 1 o.issued FROM observation o WHERE o.patient_id = :patientId " +
             "AND o.issued IS NOT NULL ORDER BY o.issued DESC", nativeQuery = true)
     Optional<LocalDateTime> findLatestIssuedDateByPatientId(UUID patientId);

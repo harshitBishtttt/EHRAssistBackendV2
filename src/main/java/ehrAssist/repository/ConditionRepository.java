@@ -15,6 +15,9 @@ import java.util.UUID;
 public interface ConditionRepository extends JpaRepository<ConditionEntity, UUID>, JpaSpecificationExecutor<ConditionEntity> {
     List<ConditionEntity> findByPatientId(UUID patientId);
 
+    @Query("select c from ConditionEntity c join fetch c.codeMaster where c.patient.id in :patientIds")
+    List<ConditionEntity> findAllByPatientIdInWithCodeMaster(List<UUID> patientIds);
+
     @Query(value = "SELECT TOP 1 c.recorded_date FROM [condition] c WHERE c.patient_id = :patientId " +
             "AND c.recorded_date IS NOT NULL ORDER BY c.recorded_date DESC", nativeQuery = true)
     Optional<LocalDate> findLatestRecordedDateByPatientId(UUID patientId);
