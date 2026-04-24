@@ -1,4 +1,4 @@
-package ehrAssist.audit;
+package ehrAssist.interceptor.audit;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -144,10 +144,6 @@ public class AuditLogInterceptor implements HandlerInterceptor {
         }
     }
 
-    /**
-     * Maps HTTP verb to FHIR AuditEvent.action code.
-     * C=Create, R=Read, U=Update, D=Delete, E=Execute/other.
-     */
     private String mapAction(String method) {
         if (ObjectUtils.isEmpty(method)) {
             return "E";
@@ -168,10 +164,6 @@ public class AuditLogInterceptor implements HandlerInterceptor {
         }
     }
 
-    /**
-     * Maps HTTP status / exception presence to FHIR AuditEvent.outcome code.
-     * 0=Success, 4=MinorFailure, 8=SeriousFailure, 12=MajorFailure.
-     */
     private String mapOutcome(int status, Exception ex) {
         if (ex != null) {
             return "8";
@@ -238,10 +230,6 @@ public class AuditLogInterceptor implements HandlerInterceptor {
         return null;
     }
 
-    /**
-     * For paths beginning with {@code /baseR4/}, returns the first segment after
-     * the prefix (e.g. {@code Patient}, {@code Observation}). Non-FHIR paths return null.
-     */
     private String extractResourceType(HttpServletRequest request) {
         String path = request.getRequestURI();
         if (ObjectUtils.isEmpty(path) || !path.startsWith(BASE_FHIR_PREFIX)) {
@@ -256,11 +244,6 @@ public class AuditLogInterceptor implements HandlerInterceptor {
         return segment;
     }
 
-    /**
-     * Resolves resource id from (in order):
-     * path vars {@code id} / {@code resourceId}, then FHIR search params
-     * {@code _id} / {@code id}. Returns null if nothing present.
-     */
     @SuppressWarnings("unchecked")
     private String extractResourceId(HttpServletRequest request) {
         try {
@@ -282,15 +265,6 @@ public class AuditLogInterceptor implements HandlerInterceptor {
         }
     }
 
-    /**
-     * Resolves patient id from (in priority order):
-     * <ol>
-     *     <li>path var {@code patientId}</li>
-     *     <li>query params {@code patientId}, {@code patient_id}, {@code patient}, {@code subject}</li>
-     *     <li>if resource type is {@code Patient} and a resource id was captured, use that</li>
-     * </ol>
-     * Returns null if nothing parseable as UUID is found.
-     */
     @SuppressWarnings("unchecked")
     private UUID extractPatientId(HttpServletRequest request,
                                   String resourceType,
@@ -322,11 +296,6 @@ public class AuditLogInterceptor implements HandlerInterceptor {
         return null;
     }
 
-    /**
-     * Reads the response body cached by {@link AuditResponseCachingFilter} and
-     * parses it as JSON. Returns {@code null} if the wrapper is absent, body is
-     * empty, status is non-2xx, or parsing fails. Very large bodies are skipped.
-     */
     private JsonNode parseResponseBody(HttpServletResponse response, int status) {
         if (response == null || status < 200 || status >= 300) {
             return null;
@@ -352,11 +321,6 @@ public class AuditLogInterceptor implements HandlerInterceptor {
         }
     }
 
-    /**
-     * When the URL had no specific id but the response is a single FHIR resource
-     * matching the expected {@code resourceType}, pulls {@code id} from the JSON.
-     * For Bundles, pulls the first entry's resource id when it matches the type.
-     */
     private String extractResourceIdFromBody(JsonNode root, String expectedType) {
         try {
             if (root == null) {
@@ -380,7 +344,6 @@ public class AuditLogInterceptor implements HandlerInterceptor {
         }
         return null;
     }
-
 
     private UUID extractPatientIdFromBody(JsonNode root) {
         try {

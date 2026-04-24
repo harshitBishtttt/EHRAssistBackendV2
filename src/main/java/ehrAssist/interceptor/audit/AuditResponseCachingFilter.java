@@ -1,4 +1,4 @@
-package ehrAssist.audit;
+package ehrAssist.interceptor.audit;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -12,15 +12,6 @@ import org.springframework.web.util.ContentCachingResponseWrapper;
 
 import java.io.IOException;
 
-/**
- * Wraps the outgoing {@link HttpServletResponse} with
- * {@link ContentCachingResponseWrapper} so {@link AuditLogInterceptor} can
- * inspect the response body (FHIR JSON) during {@code afterCompletion} to
- * extract resource ids / patient ids when URL-based extraction is insufficient.
- * <p>
- * The original response bytes are always copied back at the end — client-facing
- * behaviour is unchanged.
- */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 100)
 public class AuditResponseCachingFilter extends OncePerRequestFilter {

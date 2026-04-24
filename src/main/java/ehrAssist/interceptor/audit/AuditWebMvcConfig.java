@@ -1,4 +1,4 @@
-package ehrAssist.audit;
+package ehrAssist.interceptor.audit;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
