@@ -25,22 +25,7 @@ public interface ObservationRepository extends JpaRepository<ObservationEntity, 
     Optional<LocalDateTime> findLatestIssuedDateByPatientId(UUID patientId);
 
     @Query(value = """
-            WITH obs_ranked AS (
-                SELECT
-                    obs.patient_id,
-                    obs.observation_code_id,
-                    obs.value_quantity,
-                    obs.value_unit,
-                    obs.interpretation_code,
-                    obs.effective_date,
-                    ROW_NUMBER() OVER (
-                        PARTITION BY obs.patient_id, obs.observation_code_id
-                        ORDER BY obs.effective_date DESC
-                    ) AS rn
-                FROM dbo.observation obs
-                WHERE obs.patient_id IN (:patientIds)
-            ),
-            patient_info AS (
+            WITH patient_info AS (
                 SELECT
                     p.id                                                            AS patient_id,
                     p.gender,
@@ -57,26 +42,29 @@ public interface ObservationRepository extends JpaRepository<ObservationEntity, 
                 GROUP BY p.id, p.gender, pn.family, pn.given_first
             )
             SELECT
-                CAST(pi.patient_id        AS VARCHAR(36)) AS patientId,
-                pi.full_name                              AS fullName,
-                pi.gender                                 AS gender,
-                pi.phone                                  AS phone,
-                pi.email                                  AS email,
-                ocm.loinc_code                            AS loincCode,
-                ocm.code_system                           AS codeSystem,
-                ocm.code_display                          AS display,
-                o.value_quantity                          AS valueQuantity,
-                o.value_unit                              AS unit,
-                o.interpretation_code                     AS interpretationCode,
-                o.effective_date                          AS effectiveDate,
-                ocm.reference_range_low                   AS referenceRangeLow,
-                ocm.reference_range_high                  AS referenceRangeHigh
-            FROM obs_ranked o
-            INNER JOIN dbo.observation_code_master ocm ON ocm.id = o.observation_code_id
-            INNER JOIN patient_info pi                 ON pi.patient_id = o.patient_id
-            WHERE o.rn = :rank
-            ORDER BY pi.patient_id, ocm.loinc_code, o.effective_date DESC
+                CAST(pi.patient_id AS VARCHAR(36)) AS patientId,
+                pi.full_name                       AS fullName,
+                pi.gender                          AS gender,
+                pi.phone                           AS phone,
+                pi.email                           AS email,
+                ocm.loinc_code                     AS loincCode,
+                ocm.code_system                    AS codeSystem,
+                ocm.code_display                   AS display,
+                obs.value_quantity                 AS valueQuantity,
+                obs.value_unit                     AS unit,
+                obs.effective_date                 AS effectiveDate,
+                ocm.reference_range_low            AS referenceRangeLow,
+                ocm.reference_range_high           AS referenceRangeHigh
+            FROM dbo.observation obs
+            INNER JOIN dbo.observation_code_master ocm ON ocm.id  = obs.observation_code_id
+            INNER JOIN patient_info pi                 ON pi.patient_id = obs.patient_id
+            WHERE obs.patient_id  IN (:patientIds)
+              AND obs.effective_date >= :windowStart
+              AND obs.effective_date <= :windowEnd
+            ORDER BY pi.patient_id, ocm.loinc_code, obs.effective_date DESC
             """, nativeQuery = true)
-    List<RiskFeedProjection> findRiskFeedByPatientIds(@Param("patientIds") List<UUID> patientIds,
-                                                      @Param("rank") int rank);
+    List<RiskFeedProjection> findRiskFeedByPatientIds(
+            @Param("patientIds")  List<UUID>      patientIds,
+            @Param("windowStart") LocalDateTime   windowStart,
+            @Param("windowEnd")   LocalDateTime   windowEnd);
 }

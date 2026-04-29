@@ -32,6 +32,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
@@ -358,17 +359,19 @@ public class ObservationServiceImpl implements ObservationService {
 
     @Override
     @Transactional(readOnly = true)
-    public Bundle getRiskFeed(UUID practitionerId, int rank) {
+    public Bundle getRiskFeed(UUID practitionerId, LocalDate asOfDate) {
 
-        if (rank < 1) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "rank must be >= 1 (1 = latest, 2 = second latest, ...)");
-        }
+        // Default to today; window always covers the preceding 6 months
+        LocalDate     effectiveAsOf = !ObjectUtils.isEmpty(asOfDate) ? asOfDate : LocalDate.now();
+        LocalDateTime windowEnd     = effectiveAsOf.atTime(23, 59, 59);
+        LocalDateTime windowStart   = effectiveAsOf.minusMonths(6).atStartOfDay();
+
         List<UUID> patientIds = patientRepository.findActivePatientIdsByPractitionerId(practitionerId);
         if (patientIds.isEmpty()) {
             return emptySearchSet();
         }
-        List<RiskFeedProjection> rows = observationRepository.findRiskFeedByPatientIds(patientIds, rank);
+
+        List<RiskFeedProjection> rows = observationRepository.findRiskFeedByPatientIds(patientIds, windowStart, windowEnd);
         if (rows.isEmpty()) {
             return emptySearchSet();
         }

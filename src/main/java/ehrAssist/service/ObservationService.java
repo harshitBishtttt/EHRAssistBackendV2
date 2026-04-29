@@ -4,6 +4,7 @@ import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Observation;
 import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -17,5 +18,5 @@ public interface ObservationService {
 
     Bundle searchVitals(UUID patientId, String loincCode, Pageable pageable);
 
-    Bundle getRiskFeed(UUID practitionerId, int rank);
+    Bundle getRiskFeed(UUID practitionerId, LocalDate asOfDate);
 }

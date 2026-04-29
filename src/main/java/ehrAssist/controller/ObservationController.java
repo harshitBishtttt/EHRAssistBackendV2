@@ -11,6 +11,9 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.format.annotation.DateTimeFormat;
+
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -26,8 +29,8 @@ public class ObservationController {
     @GetMapping(value = "/$risk-feed", produces = "application/fhir+json")
     public ResponseEntity<String> getRiskFeed(
             @RequestParam UUID practitionerId,
-            @RequestParam(defaultValue = "1") int rank) {
-        return fhirResponseHelper.toResponse(observationService.getRiskFeed(practitionerId, rank));
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate asOfDate) {
+        return fhirResponseHelper.toResponse(observationService.getRiskFeed(practitionerId, asOfDate));
     }
 
     @GetMapping(value = "/vitals/search", produces = "application/fhir+json")

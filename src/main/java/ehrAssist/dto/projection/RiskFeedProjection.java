@@ -15,8 +15,7 @@ public interface RiskFeedProjection {
     String     getCodeSystem();
     String     getDisplay();
     BigDecimal getValueQuantity();
-    String     getUnit();
-    String     getInterpretationCode();
+    String        getUnit();
     LocalDateTime getEffectiveDate();
     BigDecimal getReferenceRangeLow();
     BigDecimal getReferenceRangeHigh();
