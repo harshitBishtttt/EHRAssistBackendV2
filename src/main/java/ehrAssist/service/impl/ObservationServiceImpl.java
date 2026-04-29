@@ -1,15 +1,12 @@
 package ehrAssist.service.impl;
 
+import ehrAssist.dto.projection.RiskFeedProjection;
 import ehrAssist.entity.ObservationEntity;
 import ehrAssist.entity.VitalsEntity;
 import ehrAssist.exception.ResourceNotFoundException;
 import ehrAssist.mapper.ObservationMapper;
 import ehrAssist.mapper.VitalsMapper;
-import ehrAssist.repository.EncounterRepository;
-import ehrAssist.repository.ObservationRepository;
-import ehrAssist.repository.PatientRepository;
-import ehrAssist.repository.PractitionerRepository;
-import ehrAssist.repository.VitalsRepository;
+import ehrAssist.repository.*;
 import ehrAssist.repository.master.ObservationCodeMasterRepository;
 import ehrAssist.service.ObservationService;
 import ehrAssist.util.BundleBuilder;
@@ -20,26 +17,25 @@ import ehrAssist.util.FhirQuantitySearchParser.ParsedValueQuantity;
 import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
-import org.hl7.fhir.r4.model.Bundle;
-import org.hl7.fhir.r4.model.Coding;
-import org.hl7.fhir.r4.model.Observation;
-import org.hl7.fhir.r4.model.Resource;
+import org.hl7.fhir.r4.model.*;
+import org.hl7.fhir.r4.model.Bundle.BundleEntryComponent;
+import org.hl7.fhir.r4.model.Observation.ObservationReferenceRangeComponent;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.ObjectUtils;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.UUID;
+import java.time.ZoneOffset;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -356,5 +352,133 @@ public class ObservationServiceImpl implements ObservationService {
                 .toList();
 
         return bundleBuilder.searchSet("Observation", fhirResources, fhirResources.size());
+    }
+
+    private static final String UCUM_SYSTEM = "http://unitsofmeasure.org";
+
+    @Override
+    @Transactional(readOnly = true)
+    public Bundle getRiskFeed(UUID practitionerId, int rank) {
+
+        if (rank < 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "rank must be >= 1 (1 = latest, 2 = second latest, ...)");
+        }
+        List<UUID> patientIds = patientRepository.findActivePatientIdsByPractitionerId(practitionerId);
+        if (patientIds.isEmpty()) {
+            return emptySearchSet();
+        }
+        List<RiskFeedProjection> rows = observationRepository.findRiskFeedByPatientIds(patientIds, rank);
+        if (rows.isEmpty()) {
+            return emptySearchSet();
+        }
+        Map<UUID, List<RiskFeedProjection>> grouped = rows.stream()
+                .collect(Collectors.groupingBy(
+                        RiskFeedProjection::getPatientId,
+                        LinkedHashMap::new,
+                        Collectors.toList()
+                ));
+        List<BundleEntryComponent> entries = grouped.entrySet().stream()
+                .map(e -> {
+                    List<RiskFeedProjection> patientRows = e.getValue();
+                    List<Resource> containedObs = patientRows.stream()
+                            .<Resource>map(this::buildObservation)
+                            .toList();
+                    return new BundleEntryComponent()
+                            .setResource(buildPatientResource(e.getKey(), patientRows.get(0), containedObs));
+                })
+                .toList();
+
+        Bundle bundle = new Bundle();
+        bundle.setType(Bundle.BundleType.SEARCHSET);
+        bundle.setEntry(entries);
+        bundle.setTotal(entries.size());
+        return bundle;
+    }
+
+    private Bundle emptySearchSet() {
+        Bundle bundle = new Bundle();
+        bundle.setType(Bundle.BundleType.SEARCHSET);
+        bundle.setTotal(0);
+        return bundle;
+    }
+
+    private Patient buildPatientResource(UUID patientId,
+                                         RiskFeedProjection demo,
+                                         List<Resource> containedObs) {
+        Patient patient = new Patient();
+        patient.setId(patientId.toString());
+
+        if (!ObjectUtils.isEmpty(demo.getFullName())) {
+            String[] parts = demo.getFullName().trim().split(" ", 2);
+            HumanName name = new HumanName().setUse(HumanName.NameUse.OFFICIAL);
+            if (parts.length == 2) {
+                name.setFamily(parts[1]).addGiven(parts[0]);
+            } else {
+                name.setFamily(demo.getFullName());
+            }
+            patient.addName(name);
+        }
+
+        if (!ObjectUtils.isEmpty(demo.getGender())) {
+            patient.setGender(
+                    org.hl7.fhir.r4.model.Enumerations.AdministrativeGender
+                            .fromCode(demo.getGender().toLowerCase(Locale.ROOT))
+            );
+        }
+
+        if (!ObjectUtils.isEmpty(demo.getPhone())) {
+            patient.addTelecom()
+                    .setSystem(org.hl7.fhir.r4.model.ContactPoint.ContactPointSystem.PHONE)
+                    .setValue(demo.getPhone());
+        }
+
+        if (!ObjectUtils.isEmpty(demo.getEmail())) {
+            patient.addTelecom()
+                    .setSystem(org.hl7.fhir.r4.model.ContactPoint.ContactPointSystem.EMAIL)
+                    .setValue(demo.getEmail());
+        }
+
+        patient.setContained(containedObs);
+        return patient;
+    }
+
+    private Observation buildObservation(RiskFeedProjection row) {
+        Observation obs = new Observation();
+        obs.setStatus(Observation.ObservationStatus.FINAL);
+
+        obs.setCode(new CodeableConcept().addCoding(
+                new Coding()
+                        .setSystem(row.getCodeSystem())
+                        .setCode(row.getLoincCode())
+                        .setDisplay(row.getDisplay())
+        ));
+
+        if (!ObjectUtils.isEmpty(row.getValueQuantity())) {
+            obs.setValue(new Quantity()
+                    .setValue(row.getValueQuantity())
+                    .setUnit(row.getUnit())
+                    .setSystem(UCUM_SYSTEM));
+        }
+
+        if (!ObjectUtils.isEmpty(row.getEffectiveDate())) {
+            obs.setEffective(new DateTimeType(toDate(row.getEffectiveDate())));
+        }
+
+        ObservationReferenceRangeComponent refRange = new ObservationReferenceRangeComponent();
+        if (!ObjectUtils.isEmpty(row.getReferenceRangeLow())
+                && row.getReferenceRangeLow().compareTo(BigDecimal.ZERO) > 0) {
+            refRange.setLow(new Quantity().setValue(row.getReferenceRangeLow()).setUnit(row.getUnit()));
+        }
+        if (!ObjectUtils.isEmpty(row.getReferenceRangeHigh())) {
+            refRange.setHigh(new Quantity().setValue(row.getReferenceRangeHigh()).setUnit(row.getUnit()));
+        }
+        obs.addReferenceRange(refRange);
+
+        return obs;
+    }
+
+    private Date toDate(LocalDateTime ldt) {
+        return Date.from(ldt.toInstant(ZoneOffset.UTC));
     }
 }

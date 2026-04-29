@@ -23,6 +23,13 @@ public class ObservationController {
     private final FhirResponseHelper fhirResponseHelper;
     private final FhirContext fhirContext;
 
+    @GetMapping(value = "/$risk-feed", produces = "application/fhir+json")
+    public ResponseEntity<String> getRiskFeed(
+            @RequestParam UUID practitionerId,
+            @RequestParam(defaultValue = "1") int rank) {
+        return fhirResponseHelper.toResponse(observationService.getRiskFeed(practitionerId, rank));
+    }
+
     @GetMapping(value = "/vitals/search", produces = "application/fhir+json")
     public ResponseEntity<String> searchVitals(
             @RequestParam(required = false) UUID patient,

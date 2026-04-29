@@ -16,4 +16,6 @@ public interface ObservationService {
     void delete(UUID id);
 
     Bundle searchVitals(UUID patientId, String loincCode, Pageable pageable);
+
+    Bundle getRiskFeed(UUID practitionerId, int rank);
 }
