@@ -35,9 +35,6 @@ public class PatientEntity extends BaseEntity {
     @Column(name = "deceased_date")
     private LocalDateTime deceasedDate;
 
-    @Column(name = "disease")
-    private String disease;
-
     @Column(name = "marital_status_code", length = 5)
     private String maritalStatusCode;
 

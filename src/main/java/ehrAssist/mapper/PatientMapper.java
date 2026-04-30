@@ -151,12 +151,6 @@ public class PatientMapper {
                     new Reference("Organization/" + entity.getManagingOrganization().getId()));
         }
 
-        if (entity.getDisease() != null && !entity.getDisease().isBlank()) {
-            patient.addExtension(
-                    "patient-disease",
-                    new StringType(entity.getDisease()));
-        }
-
         return patient;
     }
 
