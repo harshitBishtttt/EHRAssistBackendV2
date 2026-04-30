@@ -20,6 +20,6 @@ public class OpenApiConfig {
                                         .type(SecurityScheme.Type.HTTP)
                                         .scheme("bearer")
                                         .bearerFormat("JWT")
-                                        .description("Firebase ID token (Bearer <token>)")));
+                                        .description("JWT from POST /api/v1/users/login (Bearer <token>)")));
     }
 }

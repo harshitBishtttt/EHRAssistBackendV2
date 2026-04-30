@@ -25,7 +25,7 @@ public class AuditResponseCachingFilter extends OncePerRequestFilter {
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             return true;
         }
-        return path.startsWith("/auth/")
+        return "/api/v1/users/login".equals(path)
                 || path.startsWith("/swagger-ui")
                 || path.startsWith("/v3/api-docs")
                 || path.startsWith("/actuator")

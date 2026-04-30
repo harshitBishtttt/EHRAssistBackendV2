@@ -8,8 +8,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 /**
  * Registers {@link AuditLogInterceptor} globally.
  * <p>
- * Excluded paths mirror {@code FirebaseAuthFilter#shouldNotFilter} — these endpoints
- * are unauthenticated or infrastructural, so auditing them adds no HIPAA value.
+ * Excludes unauthenticated login, docs, and metadata — little HIPAA audit value.
  */
 @Configuration
 @RequiredArgsConstructor
@@ -22,7 +21,7 @@ public class AuditWebMvcConfig implements WebMvcConfigurer {
         registry.addInterceptor(auditLogInterceptor)
                 .addPathPatterns("/**")
                 .excludePathPatterns(
-                        "/auth/**",
+                        "/api/v1/users/login",
                         "/swagger-ui/**",
                         "/v3/api-docs/**",
                         "/actuator/**",

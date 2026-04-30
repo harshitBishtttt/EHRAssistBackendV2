@@ -1,57 +1,61 @@
 package ehrAssist.security;
 
-import com.google.firebase.auth.FirebaseToken;
 import ehrAssist.exception.FhirValidationException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.util.ObjectUtils;
 import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+import java.util.UUID;
+
 /**
- * Utility for extracting authenticated user details from the current request.
- * <p>
- * Relies on {@link FirebaseAuthFilter} having populated the request attribute
- * {@code "firebaseUser"} with a verified {@link FirebaseToken}.
- * <p>
- * Safe to call from controllers, services, aspects, or interceptors within an
- * active HTTP request thread.
+ * Reads identity set by {@link ehrAssist.security.jwt.JwtAuthFilter} ({@code jwtUserId} attribute,
+ * email as {@link Authentication#getPrincipal()}).
  */
 @Slf4j
 public final class AuthUtils {
 
-    private static final String FIREBASE_USER_ATTR = "firebaseUser";
+    private static final String JWT_USER_ID_ATTR = "jwtUserId";
 
     private AuthUtils() {
     }
 
     /**
-     * Returns the verified Firebase token attached to the current request,
-     * or {@code null} if no request is active or the token is absent.
+     * Authenticated user id from JWT, or {@code null} if absent.
      */
-    public static FirebaseToken currentToken() {
+    public static UUID currentUserId() {
         HttpServletRequest request = currentRequest();
         if (request == null) {
             return null;
         }
-        Object attr = request.getAttribute(FIREBASE_USER_ATTR);
-        return attr instanceof FirebaseToken ? (FirebaseToken) attr : null;
+        Object attr = request.getAttribute(JWT_USER_ID_ATTR);
+        return attr instanceof UUID u ? u : null;
     }
 
     /**
-     * Returns the authenticated user's email, or {@code null} if unavailable.
-     * Prefer {@link #requireCurrentEmail()} when the email is mandatory.
+     * Same as {@link #currentUserId()} as string (e.g. for audit columns).
+     */
+    public static String currentUid() {
+        UUID id = currentUserId();
+        return id != null ? id.toString() : null;
+    }
+
+    /**
+     * Email from the JWT-backed {@link Authentication}, or {@code null}.
      */
     public static String currentEmail() {
-        FirebaseToken token = currentToken();
-        return token != null ? token.getEmail() : null;
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            return null;
+        }
+        Object principal = auth.getPrincipal();
+        return principal instanceof String s ? s : null;
     }
 
-    /**
-     * Returns the authenticated user's email and throws if unavailable.
-     * Use this in business logic where an authenticated caller is required.
-     */
     public static String requireCurrentEmail() {
         String email = currentEmail();
         if (ObjectUtils.isEmpty(email)) {
@@ -62,19 +66,10 @@ public final class AuthUtils {
     }
 
     /**
-     * Returns the authenticated user's Firebase UID, or {@code null} if unavailable.
-     */
-    public static String currentUid() {
-        FirebaseToken token = currentToken();
-        return token != null ? token.getUid() : null;
-    }
-
-    /**
-     * Returns the authenticated user's display name, or {@code null} if unavailable.
+     * Display name is not carried in the JWT; returns {@code null}.
      */
     public static String currentName() {
-        FirebaseToken token = currentToken();
-        return token != null ? token.getName() : null;
+        return null;
     }
 
     private static HttpServletRequest currentRequest() {

@@ -3,7 +3,6 @@ package ehrAssist.security;
 import ehrAssist.security.jwt.JwtAuthFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -51,18 +50,6 @@ public class SecurityConfig {
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
-    }
-
-    /**
-     * Prevent FirebaseAuthFilter from being auto-registered as a servlet filter.
-     * The class is left untouched; we simply disable its registration here.
-     */
-    @Bean
-    public FilterRegistrationBean<FirebaseAuthFilter> disableFirebaseFilterAutoRegistration(
-            FirebaseAuthFilter firebaseAuthFilter) {
-        FilterRegistrationBean<FirebaseAuthFilter> bean = new FilterRegistrationBean<>(firebaseAuthFilter);
-        bean.setEnabled(false);
-        return bean;
     }
 
     @Bean

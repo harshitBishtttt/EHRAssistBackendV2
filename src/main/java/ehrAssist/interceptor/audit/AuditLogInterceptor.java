@@ -86,7 +86,7 @@ public class AuditLogInterceptor implements HandlerInterceptor {
         if (ObjectUtils.isEmpty(path)) {
             return true;
         }
-        return path.startsWith("/auth/")
+        return "/api/v1/users/login".equals(path)
                 || path.startsWith("/swagger-ui")
                 || path.startsWith("/v3/api-docs")
                 || path.startsWith("/actuator")
