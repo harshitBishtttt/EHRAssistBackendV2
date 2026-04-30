@@ -32,3 +32,8 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Secrets — never commit these ###
+src/main/resources/ehrassist-firebase.json
+*.json.key
+*-service-account*.json
