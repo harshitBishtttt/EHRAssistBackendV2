@@ -8,6 +8,7 @@ import org.hl7.fhir.r4.model.EpisodeOfCare;
 import org.springframework.http.ResponseEntity;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,12 +25,14 @@ public class EpisodeOfCareController {
     private final EpisodeOfCareService episodeOfCareService;
     private final FhirResponseHelper fhirResponseHelper;
 
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER', 'PROVIDER', 'PATIENT')")
     @GetMapping(value = "/{id}", produces = "application/fhir+json")
     public ResponseEntity<String> getById(@PathVariable UUID id) {
         EpisodeOfCare resource = episodeOfCareService.getById(id);
         return fhirResponseHelper.toResponse(resource);
     }
 
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER', 'PROVIDER', 'PATIENT')")
     @GetMapping(produces = "application/fhir+json")
     public ResponseEntity<String> search(
             @RequestParam(required = false) UUID _id,

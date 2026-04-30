@@ -9,6 +9,7 @@ import org.hl7.fhir.r4.model.Observation;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import org.springframework.format.annotation.DateTimeFormat;
@@ -26,6 +27,7 @@ public class ObservationController {
     private final FhirResponseHelper fhirResponseHelper;
     private final FhirContext fhirContext;
 
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER', 'PROVIDER')")
     @GetMapping(value = "/$risk-feed", produces = "application/fhir+json")
     public ResponseEntity<String> getRiskFeed(
             @RequestParam UUID practitionerId,
@@ -33,6 +35,7 @@ public class ObservationController {
         return fhirResponseHelper.toResponse(observationService.getRiskFeed(practitionerId, asOfDate));
     }
 
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER', 'PROVIDER', 'PATIENT')")
     @GetMapping(value = "/vitals/search", produces = "application/fhir+json")
     public ResponseEntity<String> searchVitals(
             @RequestParam(required = false) UUID patient,
@@ -42,12 +45,14 @@ public class ObservationController {
         return fhirResponseHelper.toResponse(bundle);
     }
 
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER', 'PROVIDER', 'PATIENT')")
     @GetMapping(value = "/{id}", produces = "application/fhir+json")
     public ResponseEntity<String> getById(@PathVariable UUID id) {
         Observation observation = observationService.getById(id);
         return fhirResponseHelper.toResponse(observation);
     }
 
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER', 'PROVIDER', 'PATIENT')")
     @GetMapping(value = "/search", produces = "application/fhir+json")
     public ResponseEntity<String> search(
             @RequestParam(required = false) UUID _id,

@@ -9,7 +9,9 @@ import org.hl7.fhir.r4.model.DiagnosticReport;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.UUID;
 
@@ -22,12 +24,14 @@ public class DiagnosticReportController {
     private final FhirResponseHelper fhirResponseHelper;
     private final FhirContext fhirContext;
 
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER', 'PROVIDER', 'PATIENT')")
     @GetMapping(value = "/{id}", produces = "application/fhir+json")
     public ResponseEntity<String> getById(@PathVariable UUID id) {
         DiagnosticReport diagnosticReport = diagnosticReportService.getById(id);
         return fhirResponseHelper.toResponse(diagnosticReport);
     }
 
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER', 'PROVIDER', 'PATIENT')")
     @GetMapping(produces = "application/fhir+json")
     public ResponseEntity<String> search(
             @RequestParam(required = false) UUID _id,

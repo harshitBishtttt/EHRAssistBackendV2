@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.DocumentReference;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -21,6 +22,7 @@ public class CareCoordinationNoteController {
     private final FhirResponseHelper fhirResponseHelper;
     private final FhirContext fhirContext;
 
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER', 'PROVIDER')")
     @GetMapping(value = "/search", produces = "application/fhir+json")
     public ResponseEntity<String> search(
             @RequestParam UUID patientId,

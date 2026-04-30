@@ -9,7 +9,9 @@ import org.hl7.fhir.r4.model.ServiceRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.UUID;
 
@@ -21,12 +23,14 @@ public class ServiceRequestController {
     private final ServiceRequestService serviceRequestService;
     private final FhirResponseHelper fhirResponseHelper;
     private final FhirContext fhirContext;
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER', 'PROVIDER', 'PATIENT')")
 
     @GetMapping(value = "/{id}", produces = "application/fhir+json")
     public ResponseEntity<String> getById(@PathVariable UUID id) {
         ServiceRequest serviceRequest = serviceRequestService.getById(id);
         return fhirResponseHelper.toResponse(serviceRequest);
     }
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER', 'PROVIDER', 'PATIENT')")
 
     @GetMapping(produces = "application/fhir+json")
     public ResponseEntity<String> search(

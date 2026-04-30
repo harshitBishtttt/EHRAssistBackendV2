@@ -9,6 +9,7 @@ import ehrAssist.service.MarkReviewedService;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,8 +22,8 @@ public class PatientThreeSixtyController {
     private final AiActionsService aiActionsService;
     private final MarkReviewedService markReviewedService;
 
-    private PatientThreeSixtyController(AiActionsService aiActionsService,
-                                        MarkReviewedService markReviewedService) {
+    public PatientThreeSixtyController(AiActionsService aiActionsService,
+                                       MarkReviewedService markReviewedService) {
         this.aiActionsService = aiActionsService;
         this.markReviewedService = markReviewedService;
     }
@@ -36,6 +37,7 @@ public class PatientThreeSixtyController {
     }
 
 
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER', 'PROVIDER')")
     @GetMapping(path = "/task-queue", produces = "application/fhir+json")
     ResponseEntity<?> getMyTaskQueue(@RequestParam UUID patientId,
                                      @RequestParam String status,
@@ -56,6 +58,7 @@ public class PatientThreeSixtyController {
         return ResponseEntity.status(201).body(reviewed);
     }
 
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER', 'PROVIDER')")
     @GetMapping(path = "/get-review", produces = "application/fhir+json")
     ResponseEntity<?> getPatientReview(@RequestParam UUID patientId) {
         MarkReviewedResponse response = markReviewedService.getPatientReview(patientId);

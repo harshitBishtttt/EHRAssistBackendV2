@@ -3,6 +3,7 @@ package ehrAssist.controller;
 import ehrAssist.service.RiskInsightsService;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -13,10 +14,11 @@ public class RiskInsightsController {
 
     private final RiskInsightsService riskInsightsService;
 
-    private RiskInsightsController(RiskInsightsService riskInsightsService) {
+    public RiskInsightsController(RiskInsightsService riskInsightsService) {
         this.riskInsightsService = riskInsightsService;
     }
 
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER', 'PROVIDER')")
     @GetMapping("/risk-insights")
     ResponseEntity<String> getCashedRiskInsights(@RequestParam UUID patient_id,
                                                  @RequestHeader("Authorization") String authHeader) {

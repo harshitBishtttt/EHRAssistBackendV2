@@ -11,6 +11,7 @@ import org.hl7.fhir.r4.model.Resource;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -59,6 +60,7 @@ public class PatientClinicalDataController {
     private final ServiceRequestRepository serviceRequestRepository;
     private final ServiceRequestMapper serviceRequestMapper;
 
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER', 'PROVIDER', 'PATIENT')")
     @GetMapping(produces = "application/fhir+json")
     public ResponseEntity<String> getAllClinicalData(
             @PathVariable UUID patientId,
