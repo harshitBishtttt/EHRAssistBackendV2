@@ -39,14 +39,8 @@ public class UserAccountEntity {
     @Column(name = "is_active", nullable = false)
     private Boolean isActive;
 
-    @Column(name = "is_email_verified", nullable = false)
-    private Boolean isEmailVerified;
-
     @Column(name = "failed_login_attempts", nullable = false)
     private Integer failedLoginAttempts;
-
-    @Column(name = "locked_until")
-    private LocalDateTime lockedUntil;
 
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;

@@ -17,7 +17,6 @@ public class UserResponse {
     private String email;
     private String role;
     private Boolean isActive;
-    private Boolean isEmailVerified;
     private UUID patientRefId;
     private UUID practitionerRefId;
     private LocalDateTime lastLoginAt;
@@ -29,7 +28,6 @@ public class UserResponse {
                 .email(entity.getEmail())
                 .role(entity.getRole())
                 .isActive(entity.getIsActive())
-                .isEmailVerified(entity.getIsEmailVerified())
                 .patientRefId(entity.getPatientRefId())
                 .practitionerRefId(entity.getPractitionerRefId())
                 .lastLoginAt(entity.getLastLoginAt())

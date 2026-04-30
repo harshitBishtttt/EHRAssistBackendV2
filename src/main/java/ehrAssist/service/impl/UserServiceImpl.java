@@ -25,7 +25,6 @@ import java.util.UUID;
 public class UserServiceImpl implements UserService {
 
     private static final int MAX_LOGIN_ATTEMPTS = 5;
-    private static final int LOCKOUT_MINUTES = 15;
 
     private final UserAccountRepository userAccountRepository;
     private final BCryptPasswordEncoder passwordEncoder;
@@ -41,25 +40,16 @@ public class UserServiceImpl implements UserService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Account is deactivated");
         }
 
-        if (user.getLockedUntil() != null && user.getLockedUntil().isAfter(LocalDateTime.now())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "Account locked until " + user.getLockedUntil());
-        }
-
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             int attempts = user.getFailedLoginAttempts() + 1;
-            user.setFailedLoginAttempts(attempts);
-            if (attempts >= MAX_LOGIN_ATTEMPTS) {
-                user.setLockedUntil(LocalDateTime.now().plusMinutes(LOCKOUT_MINUTES));
-            }
+            user.setFailedLoginAttempts(attempts >= MAX_LOGIN_ATTEMPTS ? 0 : attempts);
             user.setUpdatedAt(LocalDateTime.now());
             userAccountRepository.save(user);
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
         }
 
-        // Successful login - reset counters
+        // Successful login — reset failed attempts counter
         user.setFailedLoginAttempts(0);
-        user.setLockedUntil(null);
         user.setLastLoginAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
         userAccountRepository.save(user);
@@ -103,7 +93,6 @@ public class UserServiceImpl implements UserService {
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .role(request.getRole())
                 .isActive(true)
-                .isEmailVerified(false)
                 .failedLoginAttempts(0)
                 .patientRefId(request.getPatientRefId())
                 .practitionerRefId(request.getPractitionerRefId())
