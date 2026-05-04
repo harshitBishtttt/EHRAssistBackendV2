@@ -14,4 +14,8 @@ public interface UserAccountRepository extends JpaRepository<UserAccountEntity, 
     List<UserAccountEntity> findByRoleNot(String role);
 
     boolean existsByEmail(String email);
+
+    boolean existsByPatientRefId(UUID patientRefId);
+
+    boolean existsByPractitionerRefId(UUID practitionerRefId);
 }

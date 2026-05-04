@@ -10,6 +10,7 @@ import ehrAssist.repository.UserAccountRepository;
 import ehrAssist.security.jwt.JwtUtil;
 import ehrAssist.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -74,16 +75,29 @@ public class UserServiceImpl implements UserService {
     public UserResponse createUser(CreateUserRequest request) {
         if (userAccountRepository.existsByEmail(request.getEmail())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "User with email " + request.getEmail() + " already exists");
+                    "A user with email '" + request.getEmail() + "' already exists");
         }
 
-        if ("PATIENT".equals(request.getRole()) && request.getPatientRefId() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "patientRefId is required when role is PATIENT");
+        if ("PATIENT".equals(request.getRole())) {
+            if (request.getPatientRefId() == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "patientRefId is required when role is PATIENT");
+            }
+            if (userAccountRepository.existsByPatientRefId(request.getPatientRefId())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "A user account for patient '" + request.getPatientRefId() + "' already exists");
+            }
         }
-        if ("PROVIDER".equals(request.getRole()) && request.getPractitionerRefId() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "practitionerRefId is required when role is PROVIDER");
+
+        if ("PROVIDER".equals(request.getRole())) {
+            if (request.getPractitionerRefId() == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "practitionerRefId is required when role is PROVIDER");
+            }
+            if (userAccountRepository.existsByPractitionerRefId(request.getPractitionerRefId())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "A user account for practitioner '" + request.getPractitionerRefId() + "' already exists");
+            }
         }
 
         LocalDateTime now = LocalDateTime.now();
@@ -100,7 +114,12 @@ public class UserServiceImpl implements UserService {
                 .updatedAt(now)
                 .build();
 
-        return UserResponse.from(userAccountRepository.save(entity));
+        try {
+            return UserResponse.from(userAccountRepository.save(entity));
+        } catch (DataIntegrityViolationException ex) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "User account already exists — duplicate email, patient, or practitioner reference");
+        }
     }
 
     @Override
