@@ -18,7 +18,7 @@ public interface LifestyleGoalDailyRepository extends JpaRepository<LifestyleGoa
                 SUM(exercise_minutes)     AS achievedExerciseMinutes
             FROM dbo.lifestyle_goal
             WHERE patient_id = :patientId
-              AND CAST(created_at AS DATE) = CAST(GETUTCDATE() AS DATE)
+              AND CAST(scheduled_start AS DATE) = CAST(GETUTCDATE() AS DATE)
             """, nativeQuery = true)
     LifestyleGoalSummaryProjection findTodayTotals(@Param("patientId") UUID patientId);
 
@@ -30,8 +30,8 @@ public interface LifestyleGoalDailyRepository extends JpaRepository<LifestyleGoa
                 SUM(exercise_minutes)     AS achievedExerciseMinutes
             FROM dbo.lifestyle_goal
             WHERE patient_id = :patientId
-              AND CAST(created_at AS DATE) >= CAST(DATEADD(DAY, -6, GETUTCDATE()) AS DATE)
-              AND CAST(created_at AS DATE) <= CAST(GETUTCDATE() AS DATE)
+              AND CAST(scheduled_start AS DATE) >= CAST(DATEADD(DAY, -6, GETUTCDATE()) AS DATE)
+              AND CAST(scheduled_start AS DATE) <= CAST(GETUTCDATE() AS DATE)
             """, nativeQuery = true)
     LifestyleGoalSummaryProjection findWeeklyTotals(@Param("patientId") UUID patientId);
 }

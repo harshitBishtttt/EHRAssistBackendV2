@@ -39,9 +39,9 @@ public class LifestyleGoalDailyEntity {
     @Column(name = "exercise_minutes")
     private Integer exerciseMinutes;
 
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
+    @Column(name = "scheduled_start", nullable = false)
+    private LocalDateTime scheduledStart;
 
-    @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    @Column(name = "scheduled_end", nullable = false)
+    private LocalDateTime scheduledEnd;
 }
