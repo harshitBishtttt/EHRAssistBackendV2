@@ -21,11 +21,11 @@ public class PatientController {
 
     private final PatientService patientService;
     private final FhirResponseHelper fhirResponseHelper;
-    private final FhirContext fhirContext;
+    private final FhirContext fhirContext;dd.
 
     @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER', 'PROVIDER', 'PATIENT')")
-    @GetMapping(value = "/{id}", produces = "application/fhir+json")
-    public ResponseEntity<String> getById(@PathVariable UUID id) {
+    @GetMapping(value = "/find", produces = "application/fhir+json")
+    public ResponseEntity<String> getById(@RequestParam UUID id) {
         Patient patient = patientService.getById(id);
         return fhirResponseHelper.toResponse(patient);
     }
