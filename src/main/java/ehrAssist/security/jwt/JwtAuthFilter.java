@@ -55,6 +55,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         UUID userId = jwtUtil.extractUserId(token);
         String role  = jwtUtil.extractRole(token);
         String email = jwtUtil.extractEmail(token);
+        UUID refId   = jwtUtil.extractRefId(token);
 
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(
@@ -63,10 +64,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         List.of(new SimpleGrantedAuthority(role))
                 );
         authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-        authentication.getDetails();
 
         request.setAttribute("jwtUserId", userId);
-        request.setAttribute("jwtRole", role);
+        request.setAttribute("jwtRole",   role);
+        request.setAttribute("jwtRefId",  refId);  // patientRefId or practitionerRefId
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
         filterChain.doFilter(request, response);
