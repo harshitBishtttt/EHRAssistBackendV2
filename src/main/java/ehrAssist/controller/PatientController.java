@@ -21,7 +21,7 @@ public class PatientController {
 
     private final PatientService patientService;
     private final FhirResponseHelper fhirResponseHelper;
-    private final FhirContext fhirContext;dd.
+    private final FhirContext fhirContext;
 
     @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER', 'PROVIDER', 'PATIENT')")
     @GetMapping(value = "/find", produces = "application/fhir+json")
