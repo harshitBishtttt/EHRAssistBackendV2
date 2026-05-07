@@ -13,14 +13,16 @@ import ehrAssist.util.BundleBuilder;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Communication;
 import org.hl7.fhir.r4.model.Resource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.ObjectUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -61,18 +63,25 @@ public class AiRecommendationServiceImpl implements AiRecommendationService {
 
     @Override
     @Transactional(readOnly = true)
-    public Bundle getVerifiedByPatientId(UUID patientId) {
-        if (!patientRepository.existsById(patientId)) {
-            throw new ResourceNotFoundException("Patient not found: " + patientId);
+    public Bundle getByPatientId(UUID patientId, Pageable pageable) {
+        Page<AiRecommendationEntity> data = aiRecommendationRepository.findByPatientId(patientId, pageable);
+        List<AiRecommendationEntity> recommendations = data.getContent();
+
+        if (!ObjectUtils.isEmpty(recommendations)) {
+            List<Resource> fhirResources = recommendations.stream()
+                    .map(aiRecommendationMapper::toFhirResource)
+                    .map(Resource.class::cast)
+                    .toList();
+
+            StringBuilder queryParams = new StringBuilder();
+            if (patientId != null) queryParams.append("patientId=").append(patientId).append("&");
+            String query = queryParams.length() > 0 ? queryParams.substring(0, queryParams.length() - 1) : "";
+
+            return bundleBuilder.searchSetWithPagination("Communication", fhirResources, data.getTotalElements(),
+                    pageable.getPageNumber(), pageable.getPageSize(), query);
         }
 
-        List<Resource> resources = aiRecommendationRepository
-                .findByPatientIdAndVerifiedAtIsNotNull(patientId)
-                .stream()
-                .map(aiRecommendationMapper::toFhirResource)
-                .map(Resource.class::cast)
-                .collect(Collectors.toList());
-
-        return bundleBuilder.searchSet("Communication", resources, resources.size());
+        return bundleBuilder.searchSetWithPagination("Communication", null, data.getTotalElements(),
+                pageable.getPageNumber(), pageable.getPageSize(), "");
     }
 }

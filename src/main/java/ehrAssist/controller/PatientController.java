@@ -71,8 +71,10 @@ public class PatientController {
 
     @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER', 'PROVIDER', 'PATIENT')")
     @GetMapping(value = "/ai-recommendation", produces = "application/fhir+json")
-    public ResponseEntity<String> getAiRecommendations(@RequestParam UUID patientId) {
-        Bundle bundle = aiRecommendationService.getVerifiedByPatientId(patientId);
+    public ResponseEntity<String> getAiRecommendations(
+            @RequestParam UUID patientId,
+            @PageableDefault(page = 0, size = 10) Pageable pageable) {
+        Bundle bundle = aiRecommendationService.getByPatientId(patientId, pageable);
         return fhirResponseHelper.toResponse(bundle);
     }
 }

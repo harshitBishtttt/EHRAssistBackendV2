@@ -39,16 +39,6 @@ public class PractitionerController {
         return fhirResponseHelper.toResponse(practitioner);
     }
 
-    //list all the patient under a doctor
-    @PreAuthorize("hasAnyAuthority('ADMIN', 'PROVIDER')")
-    @GetMapping(value = "/fetch-patients-by-practitioner", produces = "application/fhir+json")
-    public ResponseEntity<String>
-    fetchPatientsByPractitioner(@RequestParam(required = false) UUID id,
-                                @PageableDefault(page = 0, size = 10) Pageable pageable) {
-        return fhirResponseHelper.toResponse(practitionerService.fetchPatientsByPractitioner(id,pageable));
-    }
-
-
     // @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER')")
     @GetMapping(value = "/dropdown", produces = "application/json")
     public ResponseEntity<List<PractitionerDropdownResponse>> dropdown() {
@@ -88,6 +78,14 @@ public class PractitionerController {
         practitionerService.delete(id);
         return ResponseEntity.noContent().build();
     }
+    //list all the patient under a doctor
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'PROVIDER')")
+    @GetMapping(value = "/fetch-patients-by-practitioner", produces = "application/fhir+json")
+    public ResponseEntity<String>
+    fetchPatientsByPractitioner(@RequestParam(required = false) UUID id,
+                                @PageableDefault(page = 0, size = 10) Pageable pageable) {
+        return fhirResponseHelper.toResponse(practitionerService.fetchPatientsByPractitioner(id,pageable));
+    }
 
     @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER', 'PROVIDER')")
     @PostMapping(value = "/ai-recommendation", produces = "application/fhir+json")
@@ -98,4 +96,5 @@ public class PractitionerController {
                 .header("Content-Type", "application/fhir+json")
                 .body(json);
     }
+
 }
