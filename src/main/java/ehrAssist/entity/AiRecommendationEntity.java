@@ -34,8 +34,6 @@ public class AiRecommendationEntity {
     @Column(name = "verified_at")
     private LocalDateTime verifiedAt;
 
-    @Column(name = "verified_by")
-    private UUID verifiedBy;
 
     @Builder.Default
     @OneToMany(mappedBy = "recommendation", cascade = CascadeType.ALL, orphanRemoval = true)

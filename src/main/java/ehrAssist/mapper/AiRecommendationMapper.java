@@ -38,10 +38,10 @@ public class AiRecommendationMapper {
         if (entity.getVerifiedAt() != null) {
             comm.setSent(Date.from(entity.getVerifiedAt().atZone(ZoneId.systemDefault()).toInstant()));
 
-            if (entity.getVerifiedBy() != null) {
+            if (entity.getPractitionerId() != null) {
                 comm.addExtension(new Extension()
                         .setUrl(VERIFIED_BY_URL)
-                        .setValue(new Reference("Practitioner/" + entity.getVerifiedBy())));
+                        .setValue(new Reference("Practitioner/" + entity.getPractitionerId())));
             }
 
             comm.addExtension(new Extension()

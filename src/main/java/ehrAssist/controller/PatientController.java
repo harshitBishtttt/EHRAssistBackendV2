@@ -1,6 +1,7 @@
 package ehrAssist.controller;
 
 import ca.uhn.fhir.context.FhirContext;
+import ehrAssist.service.AiRecommendationService;
 import ehrAssist.service.PatientService;
 import ehrAssist.util.FhirResponseHelper;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ import java.util.UUID;
 public class PatientController {
 
     private final PatientService patientService;
+    private final AiRecommendationService aiRecommendationService;
     private final FhirResponseHelper fhirResponseHelper;
     private final FhirContext fhirContext;
 
@@ -65,5 +67,12 @@ public class PatientController {
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         patientService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER', 'PROVIDER', 'PATIENT')")
+    @GetMapping(value = "/ai-recommendation", produces = "application/fhir+json")
+    public ResponseEntity<String> getAiRecommendations(@RequestParam UUID patientId) {
+        Bundle bundle = aiRecommendationService.getVerifiedByPatientId(patientId);
+        return fhirResponseHelper.toResponse(bundle);
     }
 }
