@@ -1,12 +1,16 @@
 package ehrAssist.controller;
 
 import ca.uhn.fhir.context.FhirContext;
+import ehrAssist.dto.request.AiRecommendationRequest;
 import ehrAssist.dto.response.PatientsByPractitionerResponse;
 import ehrAssist.dto.response.PractitionerDropdownResponse;
+import ehrAssist.service.AiRecommendationService;
 import ehrAssist.service.PractitionerService;
 import ehrAssist.util.FhirResponseHelper;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.Communication;
 import org.hl7.fhir.r4.model.Practitioner;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -23,6 +27,7 @@ import java.util.UUID;
 public class PractitionerController {
 
     private final PractitionerService practitionerService;
+    private final AiRecommendationService aiRecommendationService;
     private final FhirResponseHelper fhirResponseHelper;
     private final FhirContext fhirContext;
 
@@ -82,5 +87,15 @@ public class PractitionerController {
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         practitionerService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER', 'PROVIDER')")
+    @PostMapping(value = "/ai-recommendation", produces = "application/fhir+json")
+    public ResponseEntity<String> createAiRecommendation(@Valid @RequestBody AiRecommendationRequest request) {
+        Communication created = aiRecommendationService.create(request);
+        String json = fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(created);
+        return ResponseEntity.status(201)
+                .header("Content-Type", "application/fhir+json")
+                .body(json);
     }
 }
