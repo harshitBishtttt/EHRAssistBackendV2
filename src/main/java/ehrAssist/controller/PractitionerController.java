@@ -25,20 +25,20 @@ public class PractitionerController {
     private final FhirResponseHelper fhirResponseHelper;
     private final FhirContext fhirContext;
 
-    @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER', 'PROVIDER')")
+   // @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER', 'PROVIDER')")  -> removing for now
     @GetMapping(value = "/{id}", produces = "application/fhir+json")
     public ResponseEntity<String> getById(@PathVariable UUID id) {
         Practitioner practitioner = practitionerService.getById(id);
         return fhirResponseHelper.toResponse(practitioner);
     }
 
-    @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER')")
+   // @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER')")
     @GetMapping(value = "/dropdown", produces = "application/json")
     public ResponseEntity<List<PractitionerDropdownResponse>> dropdown() {
         return ResponseEntity.ok(practitionerService.listPractitionerDropdown());
     }
 
-    @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER')")
+   // @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER')")
     @GetMapping(produces = "application/fhir+json")
     public ResponseEntity<String> search(
             @RequestParam(required = false) UUID _id,
