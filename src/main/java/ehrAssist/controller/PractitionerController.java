@@ -1,6 +1,7 @@
 package ehrAssist.controller;
 
 import ca.uhn.fhir.context.FhirContext;
+import ehrAssist.dto.response.PatientsByPractitionerResponse;
 import ehrAssist.dto.response.PractitionerDropdownResponse;
 import ehrAssist.service.PractitionerService;
 import ehrAssist.util.FhirResponseHelper;
@@ -25,20 +26,31 @@ public class PractitionerController {
     private final FhirResponseHelper fhirResponseHelper;
     private final FhirContext fhirContext;
 
-   // @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER', 'PROVIDER')")  -> removing for now
+
+    // @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER', 'PROVIDER')")  -> removing for now
     @GetMapping(value = "/{id}", produces = "application/fhir+json")
     public ResponseEntity<String> getById(@PathVariable UUID id) {
         Practitioner practitioner = practitionerService.getById(id);
         return fhirResponseHelper.toResponse(practitioner);
     }
 
-   // @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER')")
+    //list all the patient under a doctor
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'PROVIDER')")
+    @GetMapping(value = "/fetch-patients-by-practitioner", produces = "application/fhir+json")
+    public ResponseEntity<String>
+    fetchPatientsByPractitioner(@RequestParam(required = false) UUID id,
+                                @PageableDefault(page = 0, size = 10) Pageable pageable) {
+        return fhirResponseHelper.toResponse(practitionerService.fetchPatientsByPractitioner(id,pageable));
+    }
+
+
+    // @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER')")
     @GetMapping(value = "/dropdown", produces = "application/json")
     public ResponseEntity<List<PractitionerDropdownResponse>> dropdown() {
         return ResponseEntity.ok(practitionerService.listPractitionerDropdown());
     }
 
-   // @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER')")
+    // @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER')")
     @GetMapping(produces = "application/fhir+json")
     public ResponseEntity<String> search(
             @RequestParam(required = false) UUID _id,

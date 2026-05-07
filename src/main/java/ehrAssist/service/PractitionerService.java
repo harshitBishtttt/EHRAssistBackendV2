@@ -1,5 +1,6 @@
 package ehrAssist.service;
 
+import ehrAssist.dto.response.PatientsByPractitionerResponse;
 import ehrAssist.dto.response.PractitionerDropdownResponse;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Practitioner;
@@ -12,6 +13,7 @@ public interface PractitionerService {
     Practitioner getById(UUID id);
     Bundle search(UUID id, String name, String specialty, Pageable pageable);
     List<PractitionerDropdownResponse> listPractitionerDropdown();
+    Bundle fetchPatientsByPractitioner(UUID id,Pageable pageable);
     Practitioner create(Practitioner resource);
     Practitioner update(UUID id, Practitioner resource);
     void delete(UUID id);

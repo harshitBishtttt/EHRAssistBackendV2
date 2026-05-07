@@ -1,10 +1,14 @@
 package ehrAssist.service.impl;
 
+import ehrAssist.dto.response.PatientsByPractitionerResponse;
 import ehrAssist.dto.response.PractitionerDropdownResponse;
+import ehrAssist.entity.PatientEntity;
 import ehrAssist.entity.PractitionerEntity;
 import ehrAssist.exception.ResourceNotFoundException;
+import ehrAssist.mapper.PatientMapper;
 import ehrAssist.mapper.PractitionerMapper;
 import ehrAssist.repository.OrganizationRepository;
+import ehrAssist.repository.PatientRepository;
 import ehrAssist.repository.PractitionerRepository;
 import ehrAssist.service.PractitionerService;
 import ehrAssist.util.BundleBuilder;
@@ -17,8 +21,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.ObjectUtils;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -30,6 +36,8 @@ public class PractitionerServiceImpl implements PractitionerService {
     private final OrganizationRepository organizationRepository;
     private final PractitionerMapper practitionerMapper;
     private final BundleBuilder bundleBuilder;
+    private final PatientRepository patientRepository;
+    private final PatientMapper patientMapper;
 
     @Override
     @Transactional(readOnly = true)
@@ -74,7 +82,7 @@ public class PractitionerServiceImpl implements PractitionerService {
         if (specialty != null) queryParams.append("specialty=").append(specialty).append("&");
         String query = queryParams.length() > 0 ? queryParams.substring(0, queryParams.length() - 1) : "";
 
-        return bundleBuilder.searchSetWithPagination("Practitioner", fhirResources, pageResult.getTotalElements(), 
+        return bundleBuilder.searchSetWithPagination("Practitioner", fhirResources, pageResult.getTotalElements(),
                 pageable.getPageNumber(), pageable.getPageSize(), query);
     }
 
@@ -85,6 +93,25 @@ public class PractitionerServiceImpl implements PractitionerService {
                 .map(this::toDropdownResponse)
                 .toList();
     }
+
+    public Bundle fetchPatientsByPractitioner(UUID id, Pageable pageable) {
+        Page<PatientEntity> data = patientRepository.findAllByPrimaryPractitionerId(id, pageable);
+        List<PatientEntity> patientData = data.getContent();
+        if(!ObjectUtils.isEmpty(patientData)){
+            List<Resource> fhirResources = patientData.stream()
+                    .map(patientMapper::toFhirResource)
+                    .map(Resource.class::cast)
+                    .toList();
+            StringBuilder queryParams = new StringBuilder();
+            if (id != null) queryParams.append("id=").append(id).append("&");
+            String query = queryParams.length() > 0 ? queryParams.substring(0, queryParams.length() - 1) : "";
+            return bundleBuilder.searchSetWithPagination("Patient", fhirResources, data.getTotalElements(),
+                    pageable.getPageNumber(), pageable.getPageSize(), query);
+        }
+        return bundleBuilder.searchSetWithPagination("Patient", null, data.getTotalElements(),
+                pageable.getPageNumber(), pageable.getPageSize(), "");
+    }
+
 
     @Override
     public Practitioner create(Practitioner resource) {
