@@ -1,15 +1,15 @@
 package ehrAssist.service.impl;
 
-import ehrAssist.dto.request.AiRecommendationRequest;
-import ehrAssist.entity.AiRecommendationEntity;
-import ehrAssist.entity.AiRecommendationPayloadEntity;
+import ehrAssist.dto.request.AiRecommendationInstructionsRequest;
+import ehrAssist.entity.AiRecommendationInstructionsEntity;
+import ehrAssist.entity.AiRecommendationInstructionsPayloadEntity;
 import ehrAssist.exception.ResourceNotFoundException;
-import ehrAssist.mapper.AiRecommendationMapper;
-import ehrAssist.repository.AiRecommendationRepository;
+import ehrAssist.mapper.AiRecommendationInstructionsMapper;
+import ehrAssist.repository.AiRecommendationInstructionsRepository;
 import ehrAssist.repository.PatientRepository;
-import ehrAssist.service.AiRecommendationService;
-import lombok.RequiredArgsConstructor;
+import ehrAssist.service.AiRecommendationInstructionsService;
 import ehrAssist.util.BundleBuilder;
+import lombok.RequiredArgsConstructor;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Communication;
 import org.hl7.fhir.r4.model.Resource;
@@ -27,49 +27,48 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class AiRecommendationServiceImpl implements AiRecommendationService {
+public class AiRecommendationInstructionsServiceImpl implements AiRecommendationInstructionsService {
 
-    private final AiRecommendationRepository aiRecommendationRepository;
+    private final AiRecommendationInstructionsRepository aiRecommendationInstructionsRepository;
     private final PatientRepository patientRepository;
-    private final AiRecommendationMapper aiRecommendationMapper;
+    private final AiRecommendationInstructionsMapper aiRecommendationInstructionsMapper;
     private final BundleBuilder bundleBuilder;
 
     @Override
-    public Communication create(AiRecommendationRequest request) {
+    public Communication create(AiRecommendationInstructionsRequest request) {
         if (!patientRepository.existsById(request.getPatientId())) {
             throw new ResourceNotFoundException("Patient not found: " + request.getPatientId());
         }
 
-        AiRecommendationEntity entity = AiRecommendationEntity.builder()
+        AiRecommendationInstructionsEntity entity = AiRecommendationInstructionsEntity.builder()
                 .patientId(request.getPatientId())
                 .practitionerId(request.getPractitionerId())
                 .verifiedAt(LocalDateTime.now())
                 .build();
 
         AtomicInteger seq = new AtomicInteger(1);
-        List<AiRecommendationPayloadEntity> payloads = request.getPayloads().stream()
-                .map(text -> AiRecommendationPayloadEntity.builder()
+        List<AiRecommendationInstructionsPayloadEntity> payloads = request.getPayloads().stream()
+                .map(text -> AiRecommendationInstructionsPayloadEntity.builder()
                         .recommendation(entity)
                         .sequence(seq.getAndIncrement())
                         .contentString(text)
-
                         .build())
                 .toList();
         entity.getPayloads().addAll(payloads);
 
-        AiRecommendationEntity saved = aiRecommendationRepository.save(entity);
-        return aiRecommendationMapper.toFhirResource(saved);
+        AiRecommendationInstructionsEntity saved = aiRecommendationInstructionsRepository.save(entity);
+        return aiRecommendationInstructionsMapper.toFhirResource(saved);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Bundle getByPatientId(UUID patientId, Pageable pageable) {
-        Page<AiRecommendationEntity> data = aiRecommendationRepository.findByPatientId(patientId, pageable);
-        List<AiRecommendationEntity> recommendations = data.getContent();
+        Page<AiRecommendationInstructionsEntity> data = aiRecommendationInstructionsRepository.findByPatientId(patientId, pageable);
+        List<AiRecommendationInstructionsEntity> recommendations = data.getContent();
 
         if (!ObjectUtils.isEmpty(recommendations)) {
             List<Resource> fhirResources = recommendations.stream()
-                    .map(aiRecommendationMapper::toFhirResource)
+                    .map(aiRecommendationInstructionsMapper::toFhirResource)
                     .map(Resource.class::cast)
                     .toList();
 

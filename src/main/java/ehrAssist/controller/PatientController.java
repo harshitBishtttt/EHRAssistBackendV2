@@ -1,7 +1,7 @@
 package ehrAssist.controller;
 
 import ca.uhn.fhir.context.FhirContext;
-import ehrAssist.service.AiRecommendationService;
+import ehrAssist.service.AiRecommendationInstructionsService;
 import ehrAssist.service.PatientService;
 import ehrAssist.util.FhirResponseHelper;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +21,7 @@ import java.util.UUID;
 public class PatientController {
 
     private final PatientService patientService;
-    private final AiRecommendationService aiRecommendationService;
+    private final AiRecommendationInstructionsService aiRecommendationInstructionsService;
     private final FhirResponseHelper fhirResponseHelper;
     private final FhirContext fhirContext;
 
@@ -70,11 +70,11 @@ public class PatientController {
     }
 
     @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER', 'PROVIDER', 'PATIENT')")
-    @GetMapping(value = "/ai-recommendation", produces = "application/fhir+json")
-    public ResponseEntity<String> getAiRecommendations(
+    @GetMapping(value = "/ai-recommendation-instructions", produces = "application/fhir+json")
+    public ResponseEntity<String> getAiRecommendationInstructions(
             @RequestParam UUID patientId,
             @PageableDefault(page = 0, size = 10) Pageable pageable) {
-        Bundle bundle = aiRecommendationService.getByPatientId(patientId, pageable);
+        Bundle bundle = aiRecommendationInstructionsService.getByPatientId(patientId, pageable);
         return fhirResponseHelper.toResponse(bundle);
     }
 }

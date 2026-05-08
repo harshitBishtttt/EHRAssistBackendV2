@@ -13,8 +13,8 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "ai_recommendation")
-public class AiRecommendationEntity {
+@Table(name = "ai_recommendation_instructions")
+public class AiRecommendationInstructionsEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -37,5 +37,5 @@ public class AiRecommendationEntity {
 
     @Builder.Default
     @OneToMany(mappedBy = "recommendation", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<AiRecommendationPayloadEntity> payloads = new ArrayList<>();
+    private List<AiRecommendationInstructionsPayloadEntity> payloads = new ArrayList<>();
 }

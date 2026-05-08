@@ -1,7 +1,7 @@
 package ehrAssist.mapper;
 
-import ehrAssist.entity.AiRecommendationEntity;
-import ehrAssist.entity.AiRecommendationPayloadEntity;
+import ehrAssist.entity.AiRecommendationInstructionsEntity;
+import ehrAssist.entity.AiRecommendationInstructionsPayloadEntity;
 import org.hl7.fhir.r4.model.*;
 import org.springframework.stereotype.Component;
 
@@ -10,13 +10,13 @@ import java.util.Comparator;
 import java.util.Date;
 
 @Component
-public class AiRecommendationMapper {
+public class AiRecommendationInstructionsMapper {
 
     private static final String CATEGORY_SYSTEM = "http://ehrassist.com/fhir/CodeSystem/communication-category";
     private static final String VERIFIED_BY_URL = "http://ehrassist.com/fhir/StructureDefinition/verified-by";
     private static final String VERIFIED_AT_URL = "http://ehrassist.com/fhir/StructureDefinition/verified-at";
 
-    public Communication toFhirResource(AiRecommendationEntity entity) {
+    public Communication toFhirResource(AiRecommendationInstructionsEntity entity) {
         Communication comm = new Communication();
 
         comm.setId(entity.getId().toString());
@@ -51,7 +51,7 @@ public class AiRecommendationMapper {
         }
 
         entity.getPayloads().stream()
-                .sorted(Comparator.comparingInt(AiRecommendationPayloadEntity::getSequence))
+                .sorted(Comparator.comparingInt(AiRecommendationInstructionsPayloadEntity::getSequence))
                 .forEach(payload -> {
                     Communication.CommunicationPayloadComponent payloadComponent =
                             new Communication.CommunicationPayloadComponent();

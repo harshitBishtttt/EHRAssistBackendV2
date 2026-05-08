@@ -14,7 +14,7 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AiRecommendationRequest {
+public class AiRecommendationInstructionsRequest {
 
     @NotNull(message = "Patient ID is required")
     private UUID patientId;

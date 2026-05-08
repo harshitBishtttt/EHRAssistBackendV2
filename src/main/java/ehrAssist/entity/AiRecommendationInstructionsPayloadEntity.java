@@ -10,8 +10,8 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "ai_recommendation_payload")
-public class AiRecommendationPayloadEntity {
+@Table(name = "ai_recommendation_instructions_payload")
+public class AiRecommendationInstructionsPayloadEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -22,7 +22,7 @@ public class AiRecommendationPayloadEntity {
     @JoinColumn(name = "recommendation_id", nullable = false)
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
-    private AiRecommendationEntity recommendation;
+    private AiRecommendationInstructionsEntity recommendation;
 
     @Column(name = "sequence", nullable = false)
     private Integer sequence;
