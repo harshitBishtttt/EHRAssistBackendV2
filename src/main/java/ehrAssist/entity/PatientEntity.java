@@ -47,6 +47,9 @@ public class PatientEntity extends BaseEntity {
     @Column(name = "language_display", length = 50)
     private String languageDisplay;
 
+    @Column(name = "disease")
+    private String disease;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "primary_practitioner_id")
     private PractitionerEntity primaryPractitioner;

@@ -151,6 +151,12 @@ public class PatientMapper {
                     new Reference("Organization/" + entity.getManagingOrganization().getId()));
         }
 
+        if (entity.getDisease() != null) {
+            patient.addExtension(new Extension()
+                    .setUrl("disease")
+                    .setValue(new StringType(entity.getDisease())));
+        }
+
         return patient;
     }
 
@@ -190,6 +196,11 @@ public class PatientMapper {
                 entity.setLanguageCode(lang.getCodingFirstRep().getCode());
                 entity.setLanguageDisplay(lang.getCodingFirstRep().getDisplay());
             }
+        }
+
+        Extension diseaseExt = fhir.getExtensionByUrl("http://ehrassist.com/fhir/StructureDefinition/disease");
+        if (diseaseExt != null && diseaseExt.getValue() instanceof StringType) {
+            entity.setDisease(((StringType) diseaseExt.getValue()).getValue());
         }
 
         entity.setNames(new ArrayList<>());
