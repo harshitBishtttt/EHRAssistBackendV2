@@ -8,5 +8,7 @@ import org.springframework.stereotype.Repository;
 import java.util.UUID;
 
 @Repository
-public interface PractitionerRepository extends JpaRepository<PractitionerEntity, UUID>, JpaSpecificationExecutor<PractitionerEntity> {
+public interface PractitionerRepository extends
+        JpaRepository<PractitionerEntity, UUID>, JpaSpecificationExecutor<PractitionerEntity> {
+
 }
