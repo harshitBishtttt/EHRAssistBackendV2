@@ -1,8 +1,11 @@
 package ehrAssist.service.impl;
 
 import ehrAssist.dto.projection.CareManagerOrganizationProjection;
+import ehrAssist.entity.PatientEntity;
 import ehrAssist.mapper.OrganizationMapper;
+import ehrAssist.mapper.PatientMapper;
 import ehrAssist.repository.OrganizationRepository;
+import ehrAssist.repository.PatientRepository;
 import ehrAssist.repository.PractitionerRepository;
 import ehrAssist.service.OrganizationService;
 import ehrAssist.util.BundleBuilder;
@@ -25,8 +28,10 @@ public class OrganizationServiceImpl implements OrganizationService {
 
     private final OrganizationRepository organizationRepository;
     private final OrganizationMapper organizationMapper;
+    private final PatientMapper patientMapper;
     private final BundleBuilder bundleBuilder;
     private final PractitionerRepository practitionerRepository;
+    private final PatientRepository patientRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -54,4 +59,30 @@ public class OrganizationServiceImpl implements OrganizationService {
         return bundleBuilder.searchSetWithPagination("Organization", null, data.getTotalElements(),
                 pageable.getPageNumber(), pageable.getPageSize(), "");
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Bundle fetchAllPatientsByOrganization(UUID orgId, Pageable pageable) {
+        organizationRepository.findById(orgId)
+                .orElseThrow(() -> new RuntimeException("This Organization don't exist!."));
+
+        Page<PatientEntity> patientPage = patientRepository.findAllByManagingOrganizationId(orgId, pageable);
+        List<PatientEntity> patients = patientPage.getContent();
+
+        String queryParams = "orgId=" + orgId;
+
+        if (!ObjectUtils.isEmpty(patients)) {
+            List<Resource> fhirResources = patients.stream()
+                    .map(patientMapper::toFhirResource)
+                    .map(Resource.class::cast)
+                    .toList();
+
+            return bundleBuilder.searchSetWithPagination("Patient", fhirResources, patientPage.getTotalElements(),
+                    pageable.getPageNumber(), pageable.getPageSize(), queryParams);
+        }
+
+        return bundleBuilder.searchSetWithPagination("Patient", List.of(), patientPage.getTotalElements(),
+                pageable.getPageNumber(), pageable.getPageSize(), queryParams);
+    }
+
 }

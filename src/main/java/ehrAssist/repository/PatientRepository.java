@@ -35,4 +35,6 @@ public interface PatientRepository extends JpaRepository<PatientEntity, UUID>, J
     List<UUID> findActivePatientIdsByPractitionerId(@Param("practitionerId") UUID practitionerId);
 
     Page<PatientEntity> findAllByPrimaryPractitionerId(UUID id, Pageable pageable);
+
+    Page<PatientEntity> findAllByManagingOrganizationId(UUID orgId, Pageable pageable);
 }

@@ -7,4 +7,6 @@ import java.util.UUID;
 
 public interface OrganizationService {
     Bundle getOrganizationsByCareManager(UUID careManagerId, Pageable pageable);
+
+    Bundle fetchAllPatientsByOrganization(UUID orgId, Pageable pageable);
 }

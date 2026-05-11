@@ -28,4 +28,13 @@ public class OrganizationController {
         Bundle bundle = organizationService.getOrganizationsByCareManager(_id, pageable);
         return fhirResponseHelper.toResponse(bundle);
     }
+
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER')")
+    @GetMapping(value = "/patients", produces = "application/fhir+json")
+    public ResponseEntity<String> fetchAllPatientsByOrganization(
+            @RequestParam UUID orgId,
+            @PageableDefault(page = 0, size = 10) Pageable pageable) {
+        Bundle bundle = organizationService.fetchAllPatientsByOrganization(orgId, pageable);
+        return fhirResponseHelper.toResponse(bundle);
+    }
 }
