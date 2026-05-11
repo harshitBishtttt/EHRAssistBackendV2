@@ -17,5 +17,5 @@ public class LoginResponse {
     private UUID userId;
     private String email;
     private String role;
-    private UUID refId;   // patientRefId or practitionerRefId based on role
+    private UUID refId;   // patientRefId or (practitionerRefId and care manager coz for now they are kept in same table) based on role
 }

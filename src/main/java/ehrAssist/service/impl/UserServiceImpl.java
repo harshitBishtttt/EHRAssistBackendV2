@@ -89,10 +89,10 @@ public class UserServiceImpl implements UserService {
             }
         }
 
-        if ("PROVIDER".equals(request.getRole())) {
+        if ("PROVIDER".equals(request.getRole()) || "CARE_MANAGER".equals(request.getRole())) {
             if (request.getPractitionerRefId() == null) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "practitionerRefId is required when role is PROVIDER");
+                        "practitionerRefId is required when role is " + request.getRole());
             }
             if (userAccountRepository.existsByPractitionerRefId(request.getPractitionerRefId())) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT,
@@ -175,9 +175,10 @@ public class UserServiceImpl implements UserService {
 
     private UUID resolveRefId(UserAccountEntity user) {
         return switch (user.getRole()) {
-            case "PATIENT"  -> user.getPatientRefId();
-            case "PROVIDER" -> user.getPractitionerRefId();
-            default         -> null;
+            case "PATIENT"      -> user.getPatientRefId();
+            case "PROVIDER",
+                 "CARE_MANAGER" -> user.getPractitionerRefId();
+            default             -> null;
         };
     }
 }
