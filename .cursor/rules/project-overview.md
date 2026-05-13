@@ -53,3 +53,7 @@ Login → JWT (userId, email, role, refId) → JwtAuthFilter → @PreAuthorize o
 - Risk Insights: REST to external prediction API
 - Email: Gmail SMTP
 - SSL: custom truststore
+
+## Documentation
+- The complete API & Database documentation PDF is stored at `C:\Users\Harshit\Downloads\EHRAssist_API_Documentation.pdf` (generated from HTML via Edge headless).
+- **Do NOT keep generated documentation files (PDFs, HTML docs) inside the project directory.** Always output them to the user's Downloads folder (`C:\Users\Harshit\Downloads\`).
