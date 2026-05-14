@@ -106,8 +106,9 @@ public class CareManagerServiceImpl implements CareManagerService {
     @Override
     @Transactional
     public RiskAssessment createRiskScore(CreateP360RiskScoreRequest request) {
-        if (ObjectUtils.isEmpty(request.getCareManagerId())) {
-            throw new FhirValidationException("careManagerId is required for care manager risk score");
+        UUID careManagerId = AuthUtils.currentRefId();
+        if (careManagerId == null) {
+            throw new FhirValidationException("Care manager ref id not found in token");
         }
 
         P360RiskScoreEntity entity = P360RiskScoreEntity.builder()
@@ -115,8 +116,8 @@ public class CareManagerServiceImpl implements CareManagerService {
                 .createdDate(LocalDateTime.now())
                 .patient(patientRepository.findById(request.getPatientId())
                         .orElseThrow(() -> new ResourceNotFoundException("Patient not found: " + request.getPatientId())))
-                .careManager(practitionerRepository.findById(request.getCareManagerId())
-                        .orElseThrow(() -> new ResourceNotFoundException("Care Manager not found: " + request.getCareManagerId())))
+                .careManager(practitionerRepository.findById(careManagerId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Care Manager not found: " + careManagerId)))
                 .organization(organizationRepository.findById(request.getOrganizationId())
                         .orElseThrow(() -> new ResourceNotFoundException("Organization not found: " + request.getOrganizationId())))
                 .build();

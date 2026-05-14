@@ -163,8 +163,9 @@ public class PractitionerServiceImpl implements PractitionerService {
     @Override
     @Transactional
     public RiskAssessment createRiskScore(CreateP360RiskScoreRequest request) {
-        if (ObjectUtils.isEmpty(request.getPractitionerId())) {
-            throw new FhirValidationException("practitionerId is required for provider risk score");
+        UUID practitionerId = AuthUtils.currentRefId();
+        if (practitionerId == null) {
+            throw new FhirValidationException("Practitioner ref id not found in token");
         }
 
         P360RiskScoreEntity entity = P360RiskScoreEntity.builder()
@@ -172,8 +173,8 @@ public class PractitionerServiceImpl implements PractitionerService {
                 .createdDate(LocalDateTime.now())
                 .patient(patientRepository.findById(request.getPatientId())
                         .orElseThrow(() -> new ResourceNotFoundException("Patient not found: " + request.getPatientId())))
-                .practitioner(practitionerRepository.findById(request.getPractitionerId())
-                        .orElseThrow(() -> new ResourceNotFoundException("Practitioner not found: " + request.getPractitionerId())))
+                .practitioner(practitionerRepository.findById(practitionerId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Practitioner not found: " + practitionerId)))
                 .organization(organizationRepository.findById(request.getOrganizationId())
                         .orElseThrow(() -> new ResourceNotFoundException("Organization not found: " + request.getOrganizationId())))
                 .build();

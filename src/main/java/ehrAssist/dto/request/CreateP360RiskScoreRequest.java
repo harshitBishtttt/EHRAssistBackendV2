@@ -7,7 +7,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Data
@@ -24,8 +23,4 @@ public class CreateP360RiskScoreRequest {
 
     @NotNull(message = "organizationId is required")
     private UUID organizationId;
-
-    private UUID practitionerId;
-
-    private UUID careManagerId;
 }
