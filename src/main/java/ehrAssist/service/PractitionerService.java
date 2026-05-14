@@ -1,9 +1,11 @@
 package ehrAssist.service;
 
+import ehrAssist.dto.request.CreateP360RiskScoreRequest;
 import ehrAssist.dto.response.PatientsByPractitionerResponse;
 import ehrAssist.dto.response.PractitionerDropdownResponse;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Practitioner;
+import org.hl7.fhir.r4.model.RiskAssessment;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
@@ -17,4 +19,5 @@ public interface PractitionerService {
     Practitioner create(Practitioner resource);
     Practitioner update(UUID id, Practitioner resource);
     void delete(UUID id);
+    RiskAssessment createRiskScore(CreateP360RiskScoreRequest request);
 }

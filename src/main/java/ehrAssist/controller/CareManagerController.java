@@ -2,13 +2,14 @@ package ehrAssist.controller;
 
 import ca.uhn.fhir.context.FhirContext;
 import ehrAssist.dto.request.CreateCareCoordinationNoteRequest;
+import ehrAssist.dto.request.CreateP360RiskScoreRequest;
 import ehrAssist.service.CareManagerService;
 import ehrAssist.util.FhirResponseHelper;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.DocumentReference;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
+import org.hl7.fhir.r4.model.RiskAssessment;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -56,10 +57,12 @@ public class CareManagerController {
     }
 
     @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER')")
-    @GetMapping(value = "/fetch-patients-by-care-manager", produces = "application/fhir+json")
-    public ResponseEntity<String>
-    fetchPatientsByCareManager(@RequestParam(required = false) UUID id,
-                                @PageableDefault(page = 0, size = 10) Pageable pageable) {
-        return fhirResponseHelper.toResponse(careCoordinationNoteService.fetchPatientsByCareManager(id, pageable));
+    @PostMapping(value = "/risk-assignment", consumes = "application/json", produces = "application/fhir+json")
+    public ResponseEntity<String> createRiskScoreByCareManager(@Valid @RequestBody CreateP360RiskScoreRequest request) {
+        RiskAssessment created = careCoordinationNoteService.createRiskScore(request);
+        return ResponseEntity.status(201)
+                .header("Content-Type", "application/fhir+json")
+                .header("Location", "/baseR4/P360RiskScore/" + created.getIdElement().getIdPart())
+                .body(fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(created));
     }
 }

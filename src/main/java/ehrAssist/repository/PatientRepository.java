@@ -38,5 +38,5 @@ public interface PatientRepository extends JpaRepository<PatientEntity, UUID>, J
 
     Page<PatientEntity> findAllByManagingOrganizationId(UUID orgId, Pageable pageable);
 
-    Page<PatientEntity> findAllByPrimaryCareManagerId(UUID careManagerId, Pageable pageable);
+    //Page<PatientEntity> findAllByPrimaryCareManager_Id(UUID careManagerId, Pageable pageable);
 }

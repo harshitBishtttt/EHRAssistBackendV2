@@ -1,13 +1,18 @@
 package ehrAssist.service.impl;
 
+import ehrAssist.dto.request.CreateP360RiskScoreRequest;
 import ehrAssist.dto.response.PatientsByPractitionerResponse;
 import ehrAssist.dto.response.PractitionerDropdownResponse;
+import ehrAssist.entity.P360RiskScoreEntity;
 import ehrAssist.entity.PatientEntity;
 import ehrAssist.entity.PractitionerEntity;
+import ehrAssist.exception.FhirValidationException;
 import ehrAssist.exception.ResourceNotFoundException;
+import ehrAssist.mapper.P360RiskScoreMapper;
 import ehrAssist.mapper.PatientMapper;
 import ehrAssist.mapper.PractitionerMapper;
 import ehrAssist.repository.OrganizationRepository;
+import ehrAssist.repository.P360RiskScoreRepository;
 import ehrAssist.repository.PatientRepository;
 import ehrAssist.repository.PractitionerRepository;
 import ehrAssist.service.PractitionerService;
@@ -16,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Practitioner;
 import org.hl7.fhir.r4.model.Resource;
+import org.hl7.fhir.r4.model.RiskAssessment;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -23,6 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.ObjectUtils;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -38,6 +45,8 @@ public class PractitionerServiceImpl implements PractitionerService {
     private final BundleBuilder bundleBuilder;
     private final PatientRepository patientRepository;
     private final PatientMapper patientMapper;
+    private final P360RiskScoreRepository riskScoreRepository;
+    private final P360RiskScoreMapper riskScoreMapper;
 
     @Override
     @Transactional(readOnly = true)
@@ -97,7 +106,7 @@ public class PractitionerServiceImpl implements PractitionerService {
     public Bundle fetchPatientsByPractitioner(UUID id, Pageable pageable) {
         Page<PatientEntity> data = patientRepository.findAllByPrimaryPractitionerId(id, pageable);
         List<PatientEntity> patientData = data.getContent();
-        if(!ObjectUtils.isEmpty(patientData)){
+        if (!ObjectUtils.isEmpty(patientData)) {
             List<Resource> fhirResources = patientData.stream()
                     .map(patientMapper::toFhirResource)
                     .map(Resource.class::cast)
@@ -147,6 +156,28 @@ public class PractitionerServiceImpl implements PractitionerService {
         PractitionerEntity entity = practitionerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Practitioner not found: " + id));
         practitionerRepository.delete(entity);
+    }
+
+    @Override
+    @Transactional
+    public RiskAssessment createRiskScore(CreateP360RiskScoreRequest request) {
+        if (ObjectUtils.isEmpty(request.getPractitionerId())) {
+            throw new FhirValidationException("practitionerId is required for provider risk score");
+        }
+
+        P360RiskScoreEntity entity = P360RiskScoreEntity.builder()
+                .riskScore(request.getRiskScore())
+                .createdDate(LocalDateTime.now())
+                .patient(patientRepository.findById(request.getPatientId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Patient not found: " + request.getPatientId())))
+                .practitioner(practitionerRepository.findById(request.getPractitionerId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Practitioner not found: " + request.getPractitionerId())))
+                .organization(organizationRepository.findById(request.getOrganizationId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Organization not found: " + request.getOrganizationId())))
+                .build();
+
+        P360RiskScoreEntity saved = riskScoreRepository.save(entity);
+        return riskScoreMapper.toFhirResource(saved);
     }
 
     private PractitionerDropdownResponse toDropdownResponse(PractitionerEntity practitioner) {
