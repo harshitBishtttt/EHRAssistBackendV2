@@ -3,6 +3,7 @@ package ehrAssist.controller;
 import ca.uhn.fhir.context.FhirContext;
 import ehrAssist.dto.request.CreateCareCoordinationNoteRequest;
 import ehrAssist.dto.request.CreateP360RiskScoreRequest;
+import ehrAssist.dto.response.P360RiskScoreResponse;
 import ehrAssist.service.CareManagerService;
 import ehrAssist.util.FhirResponseHelper;
 import jakarta.validation.Valid;
@@ -57,6 +58,18 @@ public class CareManagerController {
     }
 
     @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER')")
+    @GetMapping(value = "/risk-assignment", produces = "application/json")
+    public ResponseEntity<P360RiskScoreResponse> getLatestRiskScore(
+            @RequestParam UUID patientId,
+            @RequestParam UUID orgId) {
+        P360RiskScoreResponse response = careCoordinationNoteService.getLatestRiskScore(patientId, orgId);
+        if (response == null) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok(response);
+    }
+
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER')")
     @PostMapping(value = "/risk-assignment", consumes = "application/json", produces = "application/fhir+json")
     public ResponseEntity<String> createRiskScoreByCareManager(@Valid @RequestBody CreateP360RiskScoreRequest request) {
         RiskAssessment created = careCoordinationNoteService.createRiskScore(request);
@@ -65,4 +78,5 @@ public class CareManagerController {
                 .header("Location", "/baseR4/P360RiskScore/" + created.getIdElement().getIdPart())
                 .body(fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(created));
     }
+    
 }

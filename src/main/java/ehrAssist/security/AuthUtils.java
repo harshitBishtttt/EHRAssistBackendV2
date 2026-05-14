@@ -66,6 +66,18 @@ public final class AuthUtils {
     }
 
     /**
+     * Ref id from JWT (practitionerRefId or patientRefId depending on role).
+     */
+    public static UUID currentRefId() {
+        HttpServletRequest request = currentRequest();
+        if (request == null) {
+            return null;
+        }
+        Object attr = request.getAttribute("jwtRefId");
+        return attr instanceof UUID u ? u : null;
+    }
+
+    /**
      * Display name is not carried in the JWT; returns {@code null}.
      */
     public static String currentName() {

@@ -6,6 +6,7 @@ import ehrAssist.dto.request.AiRecommendedActionRequest;
 import ehrAssist.dto.request.CreateP360RiskScoreRequest;
 import ehrAssist.dto.response.PatientsByPractitionerResponse;
 import ehrAssist.dto.response.PractitionerDropdownResponse;
+import ehrAssist.dto.response.ProviderRiskScoreResponse;
 import ehrAssist.service.AiRecommendationInstructionsService;
 import ehrAssist.service.AiRecommendedActionService;
 import ehrAssist.service.PractitionerService;
@@ -110,6 +111,18 @@ public class PractitionerController {
         return ResponseEntity.status(201)
                 .header("Content-Type", "application/fhir+json")
                 .body(json);
+    }
+
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'PROVIDER')")
+    @GetMapping(value = "/risk-assignment", produces = "application/json")
+    public ResponseEntity<ProviderRiskScoreResponse> getLatestRiskScore(
+            @RequestParam UUID patientId,
+            @RequestParam UUID orgId) {
+        ProviderRiskScoreResponse response = practitionerService.getLatestRiskScore(patientId, orgId);
+        if (response == null) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok(response);
     }
 
     @PreAuthorize("hasAnyAuthority('ADMIN', 'PROVIDER')")

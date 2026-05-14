@@ -2,6 +2,7 @@ package ehrAssist.service.impl;
 
 import ehrAssist.dto.request.CreateCareCoordinationNoteRequest;
 import ehrAssist.dto.request.CreateP360RiskScoreRequest;
+import ehrAssist.dto.response.P360RiskScoreResponse;
 import ehrAssist.entity.AIRecommendedActionsEntity;
 import ehrAssist.entity.CareCoordinationNoteEntity;
 import ehrAssist.entity.P360RiskScoreEntity;
@@ -17,6 +18,7 @@ import ehrAssist.repository.OrganizationRepository;
 import ehrAssist.repository.P360RiskScoreRepository;
 import ehrAssist.repository.PatientRepository;
 import ehrAssist.repository.PractitionerRepository;
+import ehrAssist.security.AuthUtils;
 import ehrAssist.service.CareManagerService;
 import ehrAssist.util.BundleBuilder;
 import lombok.RequiredArgsConstructor;
@@ -121,5 +123,31 @@ public class CareManagerServiceImpl implements CareManagerService {
 
         P360RiskScoreEntity saved = riskScoreRepository.save(entity);
         return riskScoreMapper.toFhirResource(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public P360RiskScoreResponse getLatestRiskScore(UUID patientId, UUID orgId) {
+        UUID careManagerId = AuthUtils.currentRefId();
+        if (careManagerId == null) {
+            throw new FhirValidationException("Care manager ref id not found in token");
+        }
+
+        P360RiskScoreEntity entity = riskScoreRepository
+                .findLatestByCareManager(patientId, careManagerId, orgId)
+                .orElse(null);
+
+        if (entity == null) {
+            return null;
+        }
+
+        return P360RiskScoreResponse.builder()
+                .id(entity.getId())
+                .riskScore(entity.getRiskScore())
+                .patientId(entity.getPatient() != null ? entity.getPatient().getId() : null)
+                .careManagerId(entity.getCareManager() != null ? entity.getCareManager().getId() : null)
+                .organizationId(entity.getOrganization() != null ? entity.getOrganization().getId() : null)
+                .createdDate(entity.getCreatedDate())
+                .build();
     }
 }

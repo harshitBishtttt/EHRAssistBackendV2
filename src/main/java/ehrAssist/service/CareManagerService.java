@@ -2,6 +2,7 @@ package ehrAssist.service;
 
 import ehrAssist.dto.request.CreateCareCoordinationNoteRequest;
 import ehrAssist.dto.request.CreateP360RiskScoreRequest;
+import ehrAssist.dto.response.P360RiskScoreResponse;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.DocumentReference;
 import org.hl7.fhir.r4.model.RiskAssessment;
@@ -16,6 +17,7 @@ public interface CareManagerService {
 
     void deactivateNotes(String email, UUID patientId, UUID actionId, String status);
 
-
     RiskAssessment createRiskScore(CreateP360RiskScoreRequest request);
+
+    P360RiskScoreResponse getLatestRiskScore(UUID patientId, UUID orgId);
 }

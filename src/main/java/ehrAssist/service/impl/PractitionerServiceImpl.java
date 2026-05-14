@@ -3,6 +3,7 @@ package ehrAssist.service.impl;
 import ehrAssist.dto.request.CreateP360RiskScoreRequest;
 import ehrAssist.dto.response.PatientsByPractitionerResponse;
 import ehrAssist.dto.response.PractitionerDropdownResponse;
+import ehrAssist.dto.response.ProviderRiskScoreResponse;
 import ehrAssist.entity.P360RiskScoreEntity;
 import ehrAssist.entity.PatientEntity;
 import ehrAssist.entity.PractitionerEntity;
@@ -15,6 +16,7 @@ import ehrAssist.repository.OrganizationRepository;
 import ehrAssist.repository.P360RiskScoreRepository;
 import ehrAssist.repository.PatientRepository;
 import ehrAssist.repository.PractitionerRepository;
+import ehrAssist.security.AuthUtils;
 import ehrAssist.service.PractitionerService;
 import ehrAssist.util.BundleBuilder;
 import lombok.RequiredArgsConstructor;
@@ -178,6 +180,32 @@ public class PractitionerServiceImpl implements PractitionerService {
 
         P360RiskScoreEntity saved = riskScoreRepository.save(entity);
         return riskScoreMapper.toFhirResource(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ProviderRiskScoreResponse getLatestRiskScore(UUID patientId, UUID orgId) {
+        UUID practitionerId = AuthUtils.currentRefId();
+        if (practitionerId == null) {
+            throw new FhirValidationException("Practitioner ref id not found in token");
+        }
+
+        P360RiskScoreEntity entity = riskScoreRepository
+                .findLatestByPractitioner(patientId, practitionerId, orgId)
+                .orElse(null);
+
+        if (entity == null) {
+            return null;
+        }
+
+        return ProviderRiskScoreResponse.builder()
+                .id(entity.getId())
+                .riskScore(entity.getRiskScore())
+                .patientId(entity.getPatient() != null ? entity.getPatient().getId() : null)
+                .practitionerId(entity.getPractitioner() != null ? entity.getPractitioner().getId() : null)
+                .organizationId(entity.getOrganization() != null ? entity.getOrganization().getId() : null)
+                .createdDate(entity.getCreatedDate())
+                .build();
     }
 
     private PractitionerDropdownResponse toDropdownResponse(PractitionerEntity practitioner) {
