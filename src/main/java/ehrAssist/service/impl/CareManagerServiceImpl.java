@@ -3,16 +3,21 @@ package ehrAssist.service.impl;
 import ehrAssist.dto.request.CreateCareCoordinationNoteRequest;
 import ehrAssist.entity.AIRecommendedActionsEntity;
 import ehrAssist.entity.CareCoordinationNoteEntity;
+import ehrAssist.entity.PatientEntity;
 import ehrAssist.exception.FhirValidationException;
 import ehrAssist.mapper.CareCoordinationNoteMapper;
+import ehrAssist.mapper.PatientMapper;
 import ehrAssist.repository.AIRecommendedActionsRepository;
 import ehrAssist.repository.CareCoordinationNoteRepository;
-import ehrAssist.service.CareCoordinationNoteService;
+import ehrAssist.repository.PatientRepository;
+import ehrAssist.service.CareManagerService;
 import ehrAssist.util.BundleBuilder;
 import lombok.RequiredArgsConstructor;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.DocumentReference;
 import org.hl7.fhir.r4.model.Resource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.ObjectUtils;
@@ -23,12 +28,14 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class CareCoordinationNoteServiceImpl implements CareCoordinationNoteService {
+public class CareManagerServiceImpl implements CareManagerService {
 
     private final CareCoordinationNoteRepository careCoordinationNoteRepository;
     private final CareCoordinationNoteMapper careCoordinationNoteMapper;
     private final BundleBuilder bundleBuilder;
     private final AIRecommendedActionsRepository aiRecommendedActionsRepository;
+    private final PatientRepository patientRepository;
+    private final PatientMapper patientMapper;
 
     @Override
     @Transactional(readOnly = true)
@@ -79,5 +86,25 @@ public class CareCoordinationNoteServiceImpl implements CareCoordinationNoteServ
 
     public void deactivateNotes(String email, UUID patientId, UUID actionId, String status) {
         careCoordinationNoteRepository.deactivateTheActivity(email, patientId, actionId, status);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Bundle fetchPatientsByCareManager(UUID careManagerId, Pageable pageable) {
+        Page<PatientEntity> data = patientRepository.findAllByPrimaryCareManagerId(careManagerId, pageable);
+        List<PatientEntity> patientData = data.getContent();
+        if (!ObjectUtils.isEmpty(patientData)) {
+            List<Resource> fhirResources = patientData.stream()
+                    .map(patientMapper::toFhirResource)
+                    .map(Resource.class::cast)
+                    .toList();
+            StringBuilder queryParams = new StringBuilder();
+            if (careManagerId != null) queryParams.append("id=").append(careManagerId).append("&");
+            String query = queryParams.length() > 0 ? queryParams.substring(0, queryParams.length() - 1) : "";
+            return bundleBuilder.searchSetWithPagination("Patient", fhirResources, data.getTotalElements(),
+                    pageable.getPageNumber(), pageable.getPageSize(), query);
+        }
+        return bundleBuilder.searchSetWithPagination("Patient", List.of(), data.getTotalElements(),
+                pageable.getPageNumber(), pageable.getPageSize(), "");
     }
 }

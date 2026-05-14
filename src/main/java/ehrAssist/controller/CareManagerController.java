@@ -2,11 +2,13 @@ package ehrAssist.controller;
 
 import ca.uhn.fhir.context.FhirContext;
 import ehrAssist.dto.request.CreateCareCoordinationNoteRequest;
-import ehrAssist.service.CareCoordinationNoteService;
+import ehrAssist.service.CareManagerService;
 import ehrAssist.util.FhirResponseHelper;
 import lombok.RequiredArgsConstructor;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.DocumentReference;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -16,9 +18,9 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/baseR4/CareCoordinationNote")
 @RequiredArgsConstructor
-public class CareCoordinationNoteController {
+public class CareManagerController {
 
-    private final CareCoordinationNoteService careCoordinationNoteService;
+    private final CareManagerService careCoordinationNoteService;
     private final FhirResponseHelper fhirResponseHelper;
     private final FhirContext fhirContext;
 
@@ -51,5 +53,13 @@ public class CareCoordinationNoteController {
         return ResponseEntity.status(201)
                 .header("Content-Type", "application/fhir+json")
                 .body("");
+    }
+
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER')")
+    @GetMapping(value = "/fetch-patients-by-care-manager", produces = "application/fhir+json")
+    public ResponseEntity<String>
+    fetchPatientsByCareManager(@RequestParam(required = false) UUID id,
+                                @PageableDefault(page = 0, size = 10) Pageable pageable) {
+        return fhirResponseHelper.toResponse(careCoordinationNoteService.fetchPatientsByCareManager(id, pageable));
     }
 }

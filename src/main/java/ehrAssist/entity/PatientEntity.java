@@ -58,6 +58,10 @@ public class PatientEntity extends BaseEntity {
     @JoinColumn(name = "managing_organization_id")
     private OrganizationEntity managingOrganization;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "primary_care_manager_id")
+    private PractitionerEntity primaryCareManager;
+
     @Builder.Default
     @OneToMany(mappedBy = "patient", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PatientNameEntity> names = new ArrayList<>();
