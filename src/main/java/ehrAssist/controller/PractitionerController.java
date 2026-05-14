@@ -82,7 +82,7 @@ public class PractitionerController {
         return ResponseEntity.noContent().build();
     }
     //list all the patient under a doctor
-    @PreAuthorize("hasAnyAuthority('ADMIN', 'PROVIDER','CARE_MANAGER')")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'PROVIDER')")
     @GetMapping(value = "/fetch-patients-by-practitioner", produces = "application/fhir+json")
     public ResponseEntity<String>
     fetchPatientsByPractitioner(@RequestParam(required = false) UUID id,
