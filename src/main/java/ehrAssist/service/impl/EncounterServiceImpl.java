@@ -241,8 +241,14 @@ public class EncounterServiceImpl implements EncounterService {
             throw new IllegalArgumentException("Both start date (gt/ge) and end date (lt/le) are required");
         }
 
-        Long count = encounterRepository.countByOrganizationAndStatusAndDateRange(
-                organizationId, status, startDate, endDate);
+        Long count;
+        if (status != null && !status.isBlank()) {
+            count = encounterRepository.countByOrganizationAndStatusAndDateRange(
+                    organizationId, status, startDate, endDate);
+        } else {
+            count = encounterRepository.countByOrganizationAndDateRange(
+                    organizationId, startDate, endDate);
+        }
 
         int total = count != null ? count.intValue() : 0;
 
@@ -255,9 +261,11 @@ public class EncounterServiceImpl implements EncounterService {
         parameters.addParameter()
                 .setName("organization")
                 .setValue(new StringType(organizationId.toString()));
-        parameters.addParameter()
-                .setName("status")
-                .setValue(new StringType(status));
+        if (status != null && !status.isBlank()) {
+            parameters.addParameter()
+                    .setName("status")
+                    .setValue(new StringType(status));
+        }
 
         bundle.addEntry()
                 .setResource(parameters);

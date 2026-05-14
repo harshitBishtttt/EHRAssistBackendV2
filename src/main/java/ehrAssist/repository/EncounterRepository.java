@@ -30,4 +30,18 @@ public interface EncounterRepository extends JpaRepository<EncounterEntity, UUID
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate
     );
+
+    @Query(value = """
+            SELECT COUNT(e.id)
+            FROM patient AS p
+            JOIN encounter AS e ON e.patient_id = p.id
+            WHERE p.managing_organization_id = :organizationId
+              AND e.period_start >= :startDate
+              AND e.period_start <= :endDate
+            """, nativeQuery = true)
+    Long countByOrganizationAndDateRange(
+            @Param("organizationId") UUID organizationId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate
+    );
 }

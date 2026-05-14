@@ -49,7 +49,7 @@ public class EncounterController {
     @GetMapping(value = "/$count", produces = "application/fhir+json")
     public ResponseEntity<String> countByOrganization(
             @RequestParam UUID organization,
-            @RequestParam String status,
+            @RequestParam(required = false) String status,
             @RequestParam List<String> date) {
         Bundle bundle = encounterService.countByOrganizationAndStatus(organization, status, date);
         return fhirResponseHelper.toResponse(bundle);
