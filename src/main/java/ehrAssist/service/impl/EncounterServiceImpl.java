@@ -9,9 +9,8 @@ import ehrAssist.repository.PractitionerRepository;
 import ehrAssist.service.EncounterService;
 import ehrAssist.util.BundleBuilder;
 import lombok.RequiredArgsConstructor;
-import org.hl7.fhir.r4.model.Bundle;
-import org.hl7.fhir.r4.model.Encounter;
-import org.hl7.fhir.r4.model.Resource;
+import org.hl7.fhir.r4.model.*;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -23,6 +22,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
@@ -36,6 +36,9 @@ public class EncounterServiceImpl implements EncounterService {
     private final PractitionerRepository practitionerRepository;
     private final EncounterMapper encounterMapper;
     private final BundleBuilder bundleBuilder;
+
+    @Value("${fhir.base.url}")
+    private String baseUrl;
 
     @Override
     @Transactional(readOnly = true)
@@ -210,6 +213,56 @@ public class EncounterServiceImpl implements EncounterService {
             // Full date: YYYY-MM-DD
             return LocalDate.parse(dateStr, DateTimeFormatter.ISO_LOCAL_DATE).atStartOfDay();
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Bundle countByOrganizationAndStatus(UUID organizationId, String status, List<String> dateParams) {
+        LocalDateTime startDate = null;
+        LocalDateTime endDate = null;
+
+        if (dateParams != null) {
+            for (String dateParam : dateParams) {
+                if (dateParam.length() > 2) {
+                    String prefix = dateParam.substring(0, 2).toLowerCase();
+                    String dateValue = dateParam.substring(2);
+                    LocalDateTime parsed = parseDate(dateValue);
+
+                    if ("gt".equals(prefix) || "ge".equals(prefix) || "sa".equals(prefix)) {
+                        startDate = parsed;
+                    } else if ("lt".equals(prefix) || "le".equals(prefix) || "eb".equals(prefix)) {
+                        endDate = parsed.toLocalDate().atTime(LocalTime.MAX);
+                    }
+                }
+            }
+        }
+
+        if (startDate == null || endDate == null) {
+            throw new IllegalArgumentException("Both start date (gt/ge) and end date (lt/le) are required");
+        }
+
+        Long count = encounterRepository.countByOrganizationAndStatusAndDateRange(
+                organizationId, status, startDate, endDate);
+
+        int total = count != null ? count.intValue() : 0;
+
+        Bundle bundle = new Bundle();
+
+        Parameters parameters = new Parameters();
+        parameters.addParameter()
+                .setName("encounter-count")
+                .setValue(new IntegerType(total));
+        parameters.addParameter()
+                .setName("organization")
+                .setValue(new StringType(organizationId.toString()));
+        parameters.addParameter()
+                .setName("status")
+                .setValue(new StringType(status));
+
+        bundle.addEntry()
+                .setResource(parameters);
+
+        return bundle;
     }
 
     @Override

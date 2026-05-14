@@ -45,6 +45,16 @@ public class EncounterController {
         return fhirResponseHelper.toResponse(bundle);
     }
 
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'CARE_MANAGER', 'PROVIDER')")
+    @GetMapping(value = "/$count", produces = "application/fhir+json")
+    public ResponseEntity<String> countByOrganization(
+            @RequestParam UUID organization,
+            @RequestParam String status,
+            @RequestParam List<String> date) {
+        Bundle bundle = encounterService.countByOrganizationAndStatus(organization, status, date);
+        return fhirResponseHelper.toResponse(bundle);
+    }
+
     @PostMapping(consumes = {"application/fhir+json", "application/json"}, produces = "application/fhir+json")
     public ResponseEntity<String> create(@RequestBody String body) {
         Encounter encounter = fhirContext.newJsonParser().parseResource(Encounter.class, body);

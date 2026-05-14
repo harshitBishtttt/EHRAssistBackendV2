@@ -13,4 +13,5 @@ public interface EncounterService {
     Encounter create(Encounter resource);
     Encounter update(UUID id, Encounter resource);
     void delete(UUID id);
+    Bundle countByOrganizationAndStatus(UUID organizationId, String status, List<String> dateParams);
 }
