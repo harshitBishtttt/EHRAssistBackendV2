@@ -1,6 +1,7 @@
 package ehrAssist.mapper;
 
 import ehrAssist.entity.EncounterEntity;
+import ehrAssist.entity.OrganizationEntity;
 import org.hl7.fhir.r4.model.*;
 import org.hl7.fhir.r4.model.Encounter.EncounterStatus;
 import org.springframework.stereotype.Component;
@@ -44,6 +45,15 @@ public class EncounterMapper {
 
         if (entity.getPatient() != null) {
             encounter.setSubject(new Reference("Patient/" + entity.getPatient().getId()));
+        }
+
+        if (entity.getPatient() != null && entity.getPatient().getManagingOrganization() != null) {
+            OrganizationEntity org = entity.getPatient().getManagingOrganization();
+            Reference orgRef = new Reference("Organization/" + org.getId());
+            if (org.getName() != null) {
+                orgRef.setDisplay(org.getName());
+            }
+            encounter.setServiceProvider(orgRef);
         }
 
         if (entity.getPractitioner() != null) {
