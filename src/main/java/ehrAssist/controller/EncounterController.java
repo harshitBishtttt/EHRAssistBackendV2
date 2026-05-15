@@ -40,8 +40,9 @@ public class EncounterController {
             @RequestParam(required = false) String status,
             @RequestParam(name = "class", required = false) String encounterClass,
             @RequestParam(required = false) List<String> date,
+            @RequestParam(required = false) UUID organization,
             @PageableDefault(page = 0, size = 10) Pageable pageable) {
-        Bundle bundle = encounterService.search(_id, patient, status, encounterClass, date, pageable);
+        Bundle bundle = encounterService.search(_id, patient, status, encounterClass, date, organization, pageable);
         return fhirResponseHelper.toResponse(bundle);
     }
 

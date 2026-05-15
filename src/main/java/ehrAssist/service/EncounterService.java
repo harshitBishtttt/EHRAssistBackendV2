@@ -9,7 +9,7 @@ import java.util.UUID;
 
 public interface EncounterService {
     Encounter getById(UUID id);
-    Bundle search(UUID id, UUID patientId, String status, String encounterClass, List<String> date, Pageable pageable);
+    Bundle search(UUID id, UUID patientId, String status, String encounterClass, List<String> date, UUID organizationId, Pageable pageable);
     Encounter create(Encounter resource);
     Encounter update(UUID id, Encounter resource);
     void delete(UUID id);

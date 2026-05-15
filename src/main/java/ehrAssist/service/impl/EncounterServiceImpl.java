@@ -50,8 +50,8 @@ public class EncounterServiceImpl implements EncounterService {
 
     @Override
     @Transactional(readOnly = true)
-    public Bundle search(UUID id, UUID patientId, String status, String encounterClass, List<String> dateParams, Pageable pageable) {
-        if (id == null && patientId == null && status == null && encounterClass == null && (dateParams == null || dateParams.isEmpty())) {
+    public Bundle search(UUID id, UUID patientId, String status, String encounterClass, List<String> dateParams, UUID organizationId, Pageable pageable) {
+        if (id == null && patientId == null && status == null && encounterClass == null && organizationId == null && (dateParams == null || dateParams.isEmpty())) {
             return bundleBuilder.searchSetWithPagination("Encounter", List.of(), 0L, 0, pageable.getPageSize(), "");
         }
 
@@ -68,6 +68,9 @@ public class EncounterServiceImpl implements EncounterService {
         }
         if (encounterClass != null) {
             spec = spec.and((root, query, cb) -> cb.equal(root.get("encounterClass"), encounterClass));
+        }
+        if (organizationId != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("patient").get("managingOrganization").get("id"), organizationId));
         }
 
         // FHIR R4 date search parameter with prefixes - handle multiple date parameters
@@ -89,6 +92,7 @@ public class EncounterServiceImpl implements EncounterService {
         if (patientId != null) queryParams.append("patient=").append(patientId).append("&");
         if (status != null) queryParams.append("status=").append(status).append("&");
         if (encounterClass != null) queryParams.append("class=").append(encounterClass).append("&");
+        if (organizationId != null) queryParams.append("organization=").append(organizationId).append("&");
         if (dateParams != null && !dateParams.isEmpty()) {
             for (String dateParam : dateParams) {
                 queryParams.append("date=").append(dateParam).append("&");
