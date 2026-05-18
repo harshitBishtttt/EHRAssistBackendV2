@@ -38,5 +38,40 @@ public interface PatientRepository extends JpaRepository<PatientEntity, UUID>, J
 
     Page<PatientEntity> findAllByManagingOrganizationId(UUID orgId, Pageable pageable);
 
-    //Page<PatientEntity> findAllByPrimaryCareManager_Id(UUID careManagerId, Pageable pageable);
+    @Query(value = """
+            SELECT p.*
+            FROM care_manager_organization_mapper cmom
+            LEFT JOIN patient p ON cmom.person_id = p.id
+            WHERE cmom.care_manager_id = :careManagerId
+              AND cmom.organization_id = :orgId
+            """,
+            countQuery = """
+            SELECT COUNT(*)
+            FROM care_manager_organization_mapper cmom
+            LEFT JOIN patient p ON cmom.person_id = p.id
+            WHERE cmom.care_manager_id = :careManagerId
+              AND cmom.organization_id = :orgId
+            """,
+            nativeQuery = true)
+    Page<PatientEntity> findPatientsByOrganizationViaMapper(
+            @Param("careManagerId") UUID careManagerId,
+            @Param("orgId") UUID orgId,
+            Pageable pageable);
+
+    @Query(value = """
+            SELECT p.*
+            FROM care_manager_organization_mapper cmom
+            LEFT JOIN patient p ON cmom.person_id = p.id
+            WHERE cmom.organization_id = :orgId
+            """,
+            countQuery = """
+            SELECT COUNT(*)
+            FROM care_manager_organization_mapper cmom
+            LEFT JOIN patient p ON cmom.person_id = p.id
+            WHERE cmom.organization_id = :orgId
+            """,
+            nativeQuery = true)
+    Page<PatientEntity> findAllPatientsByOrganizationViaMapper(
+            @Param("orgId") UUID orgId,
+            Pageable pageable);
 }

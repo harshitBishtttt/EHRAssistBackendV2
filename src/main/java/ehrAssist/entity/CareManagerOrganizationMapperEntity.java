@@ -26,4 +26,7 @@ public class CareManagerOrganizationMapperEntity {
 
     @Column(name = "organization_id", nullable = false)
     private UUID organizationId;
+
+    @Column(name = "person_id")
+    private UUID personId;
 }

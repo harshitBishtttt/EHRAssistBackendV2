@@ -1,5 +1,6 @@
 package ehrAssist.controller;
 
+import ehrAssist.security.AuthUtils;
 import ehrAssist.service.OrganizationService;
 import ehrAssist.util.FhirResponseHelper;
 import lombok.RequiredArgsConstructor;
@@ -34,7 +35,8 @@ public class OrganizationController {
     public ResponseEntity<String> fetchAllPatientsByOrganization(
             @RequestParam UUID orgId,
             @PageableDefault(page = 0, size = 10) Pageable pageable) {
-        Bundle bundle = organizationService.fetchAllPatientsByOrganization(orgId, pageable);
+        UUID careManagerId = AuthUtils.currentRefId();
+        Bundle bundle = organizationService.fetchAllPatientsByOrganization(careManagerId, orgId, pageable);
         return fhirResponseHelper.toResponse(bundle);
     }
 }

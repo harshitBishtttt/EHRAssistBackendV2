@@ -14,6 +14,8 @@ import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.ObjectUtils;
@@ -62,11 +64,17 @@ public class OrganizationServiceImpl implements OrganizationService {
 
     @Override
     @Transactional(readOnly = true)
-    public Bundle fetchAllPatientsByOrganization(UUID orgId, Pageable pageable) {
+    public Bundle fetchAllPatientsByOrganization(UUID careManagerId, UUID orgId, Pageable pageable) {
         organizationRepository.findById(orgId)
                 .orElseThrow(() -> new RuntimeException("This Organization don't exist!."));
 
-        Page<PatientEntity> patientPage = patientRepository.findAllByManagingOrganizationId(orgId, pageable);
+        boolean isAdmin = isCurrentUserAdmin();
+        Page<PatientEntity> patientPage;
+        if (isAdmin) {
+            patientPage = patientRepository.findAllPatientsByOrganizationViaMapper(orgId, pageable);
+        } else {
+            patientPage = patientRepository.findPatientsByOrganizationViaMapper(careManagerId, orgId, pageable);
+        }
         List<PatientEntity> patients = patientPage.getContent();
 
         String queryParams = "orgId=" + orgId;
@@ -85,4 +93,10 @@ public class OrganizationServiceImpl implements OrganizationService {
                 pageable.getPageNumber(), pageable.getPageSize(), queryParams);
     }
 
+    private boolean isCurrentUserAdmin() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) return false;
+        return auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ADMIN"));
+    }
 }
