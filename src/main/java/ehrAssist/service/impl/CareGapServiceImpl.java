@@ -65,7 +65,7 @@ public class CareGapServiceImpl implements CareGapService {
     private static final String ALL = "all";
 
     private final PatientRepository patientRepository;
-    private final PractitionerRepository practitionerRepository;
+    private final PractitionerRepository practitionerRepository ;
     private final OrganizationRepository organizationRepository;
     private final ConditionRepository conditionRepository;
     private final ObservationRepository observationRepository;
