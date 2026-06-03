@@ -47,6 +47,20 @@ public class GlobalExceptionHandler {
                 .body(body);
     }
 
+    @ExceptionHandler(BulkUploadException.class)
+    public ResponseEntity<String> handleBulkUpload(BulkUploadException ex) {
+        OperationOutcome outcome = new OperationOutcome();
+        outcome.addIssue()
+                .setSeverity(OperationOutcome.IssueSeverity.ERROR)
+                .setCode(OperationOutcome.IssueType.INVALID)
+                .setDiagnostics(ex.getMessage());
+
+        String body = fhirContext.newJsonParser().encodeResourceToString(outcome);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .contentType(MediaType.parseMediaType("application/fhir+json"))
+                .body(body);
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<String> handleAccessDenied(AccessDeniedException ex) {
         OperationOutcome outcome = new OperationOutcome();
