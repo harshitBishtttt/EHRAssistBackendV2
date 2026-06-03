@@ -173,34 +173,28 @@ public class BulkUploadServiceImpl implements BulkUploadService {
 
         try {
             InsertOutcome outcome = tx.execute(s -> inserter.insert(tableName, headers, rows, batchSize));
-            int inserted = ObjectUtils.isEmpty(outcome) ? 0 : outcome.inserted();
-            int failed   = ObjectUtils.isEmpty(outcome) ? rows.size() : outcome.failed();
-            List<String> ignored = ObjectUtils.isEmpty(outcome) ? List.of() : outcome.ignoredColumns();
-            String error  = ObjectUtils.isEmpty(outcome) ? "Insert returned no outcome" : outcome.firstError();
+            int inserted         = ObjectUtils.isEmpty(outcome) ? 0       : outcome.inserted();
+            List<String> ignored = ObjectUtils.isEmpty(outcome) ? List.of(): outcome.ignoredColumns();
 
-            boolean hasError = !ObjectUtils.isEmpty(error);
-            String status;
-            if (failed == 0 && inserted == 0 && hasError) {
-                status = "FAILED";
-            } else if (failed == 0) {
-                status = "SUCCESS";
-            } else if (inserted == 0) {
-                status = "FAILED";
-            } else {
-                status = "PARTIAL";
-            }
-
-            return baseResult(requested, tableName, status, t0)
+            return baseResult(requested, tableName, "SUCCESS", t0)
                     .totalRows(totalPhysicalRows)
                     .insertedRows(inserted)
                     .skippedEmptyRows(skippedEmpty)
-                    .failedRows(failed)
-                    .ignoredColumns(ignored.isEmpty() ? null : ignored)
-                    .error(error)
+                    .ignoredColumns(CollectionUtils.isEmpty(ignored) ? null : ignored)
+                    .build();
+
+        } catch (BulkUploadException atomic) {
+            log.warn("Sheet [{}] → table [{}] atomically rolled back. {}",
+                    requested, tableName, atomic.getMessage());
+            return baseResult(requested, tableName, "FAILED", t0)
+                    .totalRows(totalPhysicalRows)
+                    .skippedEmptyRows(skippedEmpty)
+                    .failedRows(rows.size())
+                    .error("Atomic rollback — no rows persisted. " + atomic.getMessage())
                     .build();
 
         } catch (Exception ex) {
-            log.error("Sheet [{}] → table [{}] failed", requested, tableName, ex);
+            log.error("Sheet [{}] → table [{}] failed unexpectedly", requested, tableName, ex);
             return baseResult(requested, tableName, "FAILED", t0)
                     .totalRows(totalPhysicalRows)
                     .skippedEmptyRows(skippedEmpty)

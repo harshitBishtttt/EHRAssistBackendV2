@@ -1,5 +1,6 @@
 package ehrAssist.util;
 
+import ehrAssist.exception.BulkUploadException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -111,49 +112,38 @@ public class GenericJdbcBulkInserter {
                                    int batchSize,
                                    boolean identityInsert,
                                    List<String> ignored) {
-        int inserted = 0;
-        int failed   = 0;
-        String firstError = null;
+        int inserted   = 0;
+        int rowIndex   = 0;
         int paramCount = usableIdx.size();
+        boolean identityOn = false;
 
         try {
             if (identityInsert) {
                 setIdentityInsert(conn, tableName, true);
+                identityOn = true;
             }
             try (PreparedStatement ps = conn.prepareStatement(insertSql)) {
                 int batched = 0;
                 for (Object[] row : rows) {
-                    try {
-                        for (int p = 0; p < paramCount; p++) {
-                            int sheetIdx = usableIdx.get(p);
-                            Object raw   = sheetIdx < row.length ? row[sheetIdx] : null;
-                            bindParam(ps, p + 1, raw, usableDataTypes.get(p));
-                        }
-                        ps.addBatch();
-                        if (++batched >= batchSize) {
-                            inserted += sumCounts(ps.executeBatch());
-                            batched = 0;
-                        }
-                    } catch (SQLException e) {
-                        failed++;
-                        if (ObjectUtils.isEmpty(firstError)) {
-                            firstError = "Row bind/insert failed: " + e.getMessage();
-                        }
-                        ps.clearParameters();
+                    rowIndex++;
+                    bindRowOrAbort(ps, row, usableIdx, usableDataTypes, paramCount, tableName, rowIndex);
+                    ps.addBatch();
+                    if (++batched >= batchSize) {
+                        inserted += flushBatchOrAbort(ps, tableName, inserted, rowIndex);
+                        batched = 0;
                     }
                 }
                 if (batched > 0) {
-                    inserted += sumCounts(ps.executeBatch());
+                    inserted += flushBatchOrAbort(ps, tableName, inserted, rowIndex);
                 }
             }
-        } catch (SQLException e) {
-            failed += Math.max(0, rows.size() - inserted);
-            firstError = ObjectUtils.isEmpty(firstError)
-                    ? "Bulk insert failed: " + e.getMessage()
-                    : firstError;
-            log.error("Bulk insert into {} aborted", tableName, e);
+        } catch (SQLException sqlEx) {
+            throw new BulkUploadException(
+                    "Atomic abort: bulk insert into [" + tableName + "] failed during prepare/setup: "
+                            + sqlEx.getMessage(),
+                    sqlEx);
         } finally {
-            if (identityInsert) {
+            if (identityOn) {
                 try {
                     setIdentityInsert(conn, tableName, false);
                 } catch (SQLException e) {
@@ -161,7 +151,45 @@ public class GenericJdbcBulkInserter {
                 }
             }
         }
-        return new InsertOutcome(inserted, failed, ignored, firstError);
+        return new InsertOutcome(inserted, 0, ignored, null);
+    }
+
+    private void bindRowOrAbort(PreparedStatement ps,
+                                Object[] row,
+                                List<Integer> usableIdx,
+                                List<String> usableDataTypes,
+                                int paramCount,
+                                String tableName,
+                                int rowIndex) {
+        for (int p = 0; p < paramCount; p++) {
+            int sheetIdx = usableIdx.get(p);
+            Object raw   = sheetIdx < row.length ? row[sheetIdx] : null;
+            try {
+                bindParam(ps, p + 1, raw, usableDataTypes.get(p));
+            } catch (SQLException bindEx) {
+                throw new BulkUploadException(
+                        "Atomic abort: bind failed at sheet row " + rowIndex
+                                + ", column position " + (p + 1) + " in [" + tableName + "]: "
+                                + bindEx.getMessage(),
+                        bindEx);
+            }
+        }
+    }
+
+    private int flushBatchOrAbort(PreparedStatement ps,
+                                  String tableName,
+                                  int rowsBufferedBefore,
+                                  int currentRow) {
+        try {
+            return sumCounts(ps.executeBatch());
+        } catch (SQLException batchEx) {
+            throw new BulkUploadException(
+                    "Atomic abort: batch flush failed for [" + tableName + "] near sheet row "
+                            + currentRow + " (" + rowsBufferedBefore
+                            + " rows previously buffered in this transaction): "
+                            + batchEx.getMessage(),
+                    batchEx);
+        }
     }
 
     private void bindParam(PreparedStatement ps, int idx, Object raw, String dataType)
