@@ -25,7 +25,7 @@ public class OrganizationController {
     @GetMapping(value = "/by-care-manager", produces = "application/fhir+json")
     public ResponseEntity<String> getOrganizationsByCareManager(
             @RequestParam UUID _id,
-            @PageableDefault(page = 0, size = 10) Pageable pageable) {
+            @PageableDefault(page = 0, size = 30) Pageable pageable) {
         Bundle bundle = organizationService.getOrganizationsByCareManager(_id, pageable);
         return fhirResponseHelper.toResponse(bundle);
     }
@@ -34,7 +34,7 @@ public class OrganizationController {
     @GetMapping(value = "/patients", produces = "application/fhir+json")
     public ResponseEntity<String> fetchAllPatientsByOrganization(
             @RequestParam UUID orgId,
-            @PageableDefault(page = 0, size = 10) Pageable pageable) {
+            @PageableDefault(page = 0, size = 30) Pageable pageable) {
         UUID careManagerId = AuthUtils.currentRefId();
         Bundle bundle = organizationService.fetchAllPatientsByOrganization(careManagerId, orgId, pageable);
         return fhirResponseHelper.toResponse(bundle);
