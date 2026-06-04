@@ -8,20 +8,27 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
 
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.sql.Types;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -123,18 +130,21 @@ public class GenericJdbcBulkInserter {
                 identityOn = true;
             }
             try (PreparedStatement ps = conn.prepareStatement(insertSql)) {
-                int batched = 0;
                 for (Object[] row : rows) {
                     rowIndex++;
                     bindRowOrAbort(ps, row, usableIdx, usableDataTypes, paramCount, tableName, rowIndex);
-                    ps.addBatch();
-                    if (++batched >= batchSize) {
-                        inserted += flushBatchOrAbort(ps, tableName, inserted, rowIndex);
-                        batched = 0;
+                    try {
+                        ps.executeUpdate();
+                        inserted++;
+                    } catch (SQLException execEx) {
+                        throw new BulkUploadException(
+                                "Atomic abort: insert failed for [" + tableName + "] at sheet row "
+                                        + rowIndex + " (" + inserted
+                                        + " rows previously inserted in this transaction): "
+                                        + execEx.getMessage(),
+                                execEx);
                     }
-                }
-                if (batched > 0) {
-                    inserted += flushBatchOrAbort(ps, tableName, inserted, rowIndex);
+                    ps.clearParameters();
                 }
             }
         } catch (SQLException sqlEx) {
@@ -176,27 +186,29 @@ public class GenericJdbcBulkInserter {
         }
     }
 
-    private int flushBatchOrAbort(PreparedStatement ps,
-                                  String tableName,
-                                  int rowsBufferedBefore,
-                                  int currentRow) {
-        try {
-            return sumCounts(ps.executeBatch());
-        } catch (SQLException batchEx) {
-            throw new BulkUploadException(
-                    "Atomic abort: batch flush failed for [" + tableName + "] near sheet row "
-                            + currentRow + " (" + rowsBufferedBefore
-                            + " rows previously buffered in this transaction): "
-                            + batchEx.getMessage(),
-                    batchEx);
-        }
-    }
+    private static final Set<String> DATE_TYPES     = Set.of("date");
+    private static final Set<String> DATETIME_TYPES = Set.of("datetime", "datetime2", "smalldatetime", "datetimeoffset");
+    private static final Set<String> INT_TYPES      = Set.of("int", "integer", "smallint", "tinyint");
+    private static final Set<String> BIGINT_TYPES   = Set.of("bigint");
+    private static final Set<String> DECIMAL_TYPES  = Set.of("decimal", "numeric", "money", "smallmoney", "float", "real");
+    private static final Set<String> BIT_TYPES      = Set.of("bit");
+    private static final Set<String> STRING_TYPES   = Set.of("varchar", "nvarchar", "char", "nchar", "text", "ntext", "xml");
+
+    private static final DateTimeFormatter DT_FMT = DateTimeFormatter.ofPattern(
+            "[yyyy-MM-dd HH:mm:ss][yyyy-MM-dd'T'HH:mm:ss][yyyy-MM-dd HH:mm][yyyy-MM-dd'T'HH:mm]");
+    private static final DateTimeFormatter D_FMT  = DateTimeFormatter.ofPattern("[yyyy-MM-dd][MM/dd/yyyy][dd-MM-yyyy]");
 
     private void bindParam(PreparedStatement ps, int idx, Object raw, String dataType)
             throws SQLException {
-        boolean isBinary = !ObjectUtils.isEmpty(dataType) && BINARY_SQL_TYPES.contains(dataType);
 
-        if (isBinary) {
+        if (ObjectUtils.isEmpty(raw)) {
+            ps.setObject(idx, null);
+            return;
+        }
+
+        String dt = ObjectUtils.isEmpty(dataType) ? "" : dataType;
+
+        if (BINARY_SQL_TYPES.contains(dt)) {
             byte[] bytes = toBinary(raw);
             if (bytes == null) {
                 ps.setNull(idx, Types.VARBINARY);
@@ -206,10 +218,86 @@ public class GenericJdbcBulkInserter {
             return;
         }
 
-        if (ObjectUtils.isEmpty(raw)) {
-            ps.setObject(idx, null);
-        } else {
-            ps.setObject(idx, raw);
+        if ("uniqueidentifier".equals(dt)) {
+            ps.setObject(idx, UUID.fromString(raw.toString().trim()));
+            return;
+        }
+
+        if (BIT_TYPES.contains(dt)) {
+            if (raw instanceof Boolean b) {
+                ps.setBoolean(idx, b);
+            } else {
+                int v = ((Number) toNumber(raw)).intValue();
+                ps.setBoolean(idx, v != 0);
+            }
+            return;
+        }
+
+        if (INT_TYPES.contains(dt)) {
+            ps.setInt(idx, ((Number) toNumber(raw)).intValue());
+            return;
+        }
+
+        if (BIGINT_TYPES.contains(dt)) {
+            ps.setLong(idx, ((Number) toNumber(raw)).longValue());
+            return;
+        }
+
+        if (DECIMAL_TYPES.contains(dt)) {
+            if (raw instanceof BigDecimal bd) {
+                ps.setBigDecimal(idx, bd);
+            } else {
+                ps.setBigDecimal(idx, new BigDecimal(raw.toString().trim()));
+            }
+            return;
+        }
+
+        if (DATE_TYPES.contains(dt)) {
+            ps.setDate(idx, toSqlDate(raw));
+            return;
+        }
+
+        if (DATETIME_TYPES.contains(dt)) {
+            ps.setTimestamp(idx, toSqlTimestamp(raw));
+            return;
+        }
+
+        if (STRING_TYPES.contains(dt)) {
+            ps.setString(idx, raw.toString());
+            return;
+        }
+
+        ps.setObject(idx, raw);
+    }
+
+    private Number toNumber(Object raw) {
+        if (raw instanceof Number n) return n;
+        String s = raw.toString().trim();
+        if (s.isEmpty()) return 0;
+        return new BigDecimal(s);
+    }
+
+    private Date toSqlDate(Object raw) {
+        if (raw instanceof LocalDate ld) return Date.valueOf(ld);
+        if (raw instanceof LocalDateTime ldt) return Date.valueOf(ldt.toLocalDate());
+        if (raw instanceof java.util.Date d) return new Date(d.getTime());
+        String s = raw.toString().trim();
+        try {
+            return Date.valueOf(LocalDate.parse(s, D_FMT));
+        } catch (DateTimeParseException e) {
+            return Date.valueOf(LocalDate.parse(s));
+        }
+    }
+
+    private Timestamp toSqlTimestamp(Object raw) {
+        if (raw instanceof LocalDateTime ldt) return Timestamp.valueOf(ldt);
+        if (raw instanceof LocalDate ld) return Timestamp.valueOf(ld.atStartOfDay());
+        if (raw instanceof java.util.Date d) return new Timestamp(d.getTime());
+        String s = raw.toString().trim();
+        try {
+            return Timestamp.valueOf(LocalDateTime.parse(s, DT_FMT));
+        } catch (DateTimeParseException e) {
+            return Timestamp.valueOf(LocalDateTime.parse(s));
         }
     }
 
@@ -262,15 +350,6 @@ public class GenericJdbcBulkInserter {
             out[i] = (byte) ((hi << 4) | lo);
         }
         return out;
-    }
-
-    private int sumCounts(int[] counts) {
-        if (ObjectUtils.isEmpty(counts)) {
-            return 0;
-        }
-        return Arrays.stream(counts)
-                .map(c -> c == Statement.SUCCESS_NO_INFO ? 1 : Math.max(0, c))
-                .sum();
     }
 
     private void setIdentityInsert(Connection conn, String tableName, boolean on) throws SQLException {
