@@ -202,7 +202,11 @@ public class GenericJdbcBulkInserter {
             throws SQLException {
 
         if (ObjectUtils.isEmpty(raw)) {
-            ps.setObject(idx, null);
+            if (BINARY_SQL_TYPES.contains(ObjectUtils.isEmpty(dataType) ? "" : dataType)) {
+                ps.setNull(idx, Types.VARBINARY);
+            } else {
+                ps.setObject(idx, null);
+            }
             return;
         }
 
