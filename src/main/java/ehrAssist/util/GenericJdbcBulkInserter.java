@@ -297,7 +297,11 @@ public class GenericJdbcBulkInserter {
         try {
             return Timestamp.valueOf(LocalDateTime.parse(s, DT_FMT));
         } catch (DateTimeParseException e) {
-            return Timestamp.valueOf(LocalDateTime.parse(s));
+            try {
+                return Timestamp.valueOf(LocalDateTime.parse(s));
+            } catch (DateTimeParseException e2) {
+                return Timestamp.valueOf(LocalDate.parse(s).atStartOfDay());
+            }
         }
     }
 
