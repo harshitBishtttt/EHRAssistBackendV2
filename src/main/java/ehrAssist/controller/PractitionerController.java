@@ -89,7 +89,7 @@ public class PractitionerController {
     @GetMapping(value = "/fetch-patients-by-practitioner", produces = "application/fhir+json")
     public ResponseEntity<String>
     fetchPatientsByPractitioner(@RequestParam(required = false) UUID id,
-                                @PageableDefault(page = 0, size = 10) Pageable pageable) {
+                                @PageableDefault(page = 0, size = 30) Pageable pageable) {
         return fhirResponseHelper.toResponse(practitionerService.fetchPatientsByPractitioner(id,pageable));
     }
 
